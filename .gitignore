@@ -1,0 +1,35 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of go coverage
+*.out
+
+# SQLite database files
+*.db
+
+# Frontend
+yolo-client/node_modules/
+yolo-client/dist/
+yolo-cli/client-dist/
+
+# Generated (frontend)
+yolo-client/swagger.json
+yolo-client/src/generated.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

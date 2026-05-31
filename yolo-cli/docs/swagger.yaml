@@ -1,0 +1,815 @@
+basePath: /api/v1
+definitions:
+  internal_handler.CreateDocReq:
+    properties:
+      content:
+        type: string
+      projectKey:
+        type: string
+      title:
+        type: string
+    type: object
+  internal_handler.CreateExecutorReq:
+    properties:
+      name:
+        type: string
+      soul:
+        type: string
+    type: object
+  internal_handler.CreateIssueReq:
+    properties:
+      deadline:
+        type: string
+      description:
+        type: string
+      executor_id:
+        type: integer
+      parent_id:
+        type: integer
+      priority:
+        type: string
+      project_id:
+        type: integer
+      title:
+        type: string
+    type: object
+  internal_handler.CreateProjectReq:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  internal_handler.DocumentResponse:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      file_path:
+        type: string
+      id:
+        type: integer
+      key:
+        type: string
+      project_id:
+        type: integer
+      sort_order:
+        type: integer
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  internal_handler.UpdateDocReq:
+    properties:
+      content:
+        type: string
+      key:
+        type: string
+      title:
+        type: string
+    type: object
+  internal_handler.UpdateProjectReq:
+    properties:
+      description:
+        type: string
+      key:
+        type: string
+      name:
+        type: string
+    type: object
+  yolo-team_yolo-cli_internal_common.Response:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+  yolo-team_yolo-cli_internal_model.Document:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      key:
+        type: string
+      project_id:
+        type: integer
+      sort_order:
+        type: integer
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  yolo-team_yolo-cli_internal_model.Executor:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      role:
+        type: string
+      soul:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  yolo-team_yolo-cli_internal_model.Issue:
+    properties:
+      branch_name:
+        type: string
+      children:
+        items:
+          $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Issue'
+        type: array
+      created_at:
+        type: string
+      deadline:
+        type: string
+      description:
+        type: string
+      executor_id:
+        type: integer
+      id:
+        type: integer
+      key:
+        type: string
+      parent_id:
+        type: integer
+      priority:
+        type: string
+      project_id:
+        type: integer
+      repo_name:
+        type: string
+      repo_url:
+        type: string
+      sort_order:
+        type: integer
+      status:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  yolo-team_yolo-cli_internal_model.Project:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      key:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  yolo-team_yolo-cli_internal_model.UpdateIssueRequest:
+    properties:
+      branch_name:
+        type: string
+      deadline:
+        type: string
+      description:
+        type: string
+      executor_id:
+        type: integer
+      priority:
+        type: string
+      repo_name:
+        type: string
+      repo_url:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Yolo Team 项目管理 API
+  title: Yolo Team API
+  version: "1.0"
+paths:
+  /api/v1/documents/{key}:
+    delete:
+      description: Delete a document by key
+      operationId: DeleteDocument
+      parameters:
+      - description: Document key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Delete a document
+      tags:
+      - Documents
+    get:
+      description: Get document details by key
+      operationId: GetDocument
+      parameters:
+      - description: Document key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_handler.DocumentResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Get a document
+      tags:
+      - Documents
+    put:
+      consumes:
+      - application/json
+      description: Update document title and/or content
+      operationId: UpdateDocument
+      parameters:
+      - description: Document key
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Document update info
+        in: body
+        name: document
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.UpdateDocReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_handler.DocumentResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Update a document
+      tags:
+      - Documents
+  /api/v1/executors:
+    get:
+      description: Get a list of all executors
+      operationId: ListExecutors
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Executor'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: List all executors
+      tags:
+      - Executors
+    post:
+      consumes:
+      - application/json
+      description: Create a new executor
+      operationId: CreateExecutor
+      parameters:
+      - description: Executor info
+        in: body
+        name: executor
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.CreateExecutorReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Executor'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Create an executor
+      tags:
+      - Executors
+  /api/v1/executors/{name}:
+    delete:
+      description: Delete an executor by name
+      operationId: DeleteExecutor
+      parameters:
+      - description: Executor name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Delete an executor
+      tags:
+      - Executors
+  /api/v1/issues:
+    get:
+      description: List issues with optional filters
+      operationId: ListIssues
+      parameters:
+      - description: Filter by project ID
+        in: query
+        name: project_id
+        type: integer
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by parent ID
+        in: query
+        name: parent_id
+        type: integer
+      - description: Filter by executor ID
+        in: query
+        name: executor_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Issue'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: List issues
+      tags:
+      - Issues
+    post:
+      consumes:
+      - application/json
+      description: Create a new issue
+      operationId: CreateIssue
+      parameters:
+      - description: Issue info
+        in: body
+        name: issue
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.CreateIssueReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Issue'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Create an issue
+      tags:
+      - Issues
+  /api/v1/issues/{key}:
+    delete:
+      description: Delete an issue by key (cascade deletes children)
+      operationId: DeleteIssue
+      parameters:
+      - description: Issue key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Delete an issue
+      tags:
+      - Issues
+    get:
+      description: Get issue details by key
+      operationId: GetIssue
+      parameters:
+      - description: Issue key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Issue'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Get an issue
+      tags:
+      - Issues
+    put:
+      consumes:
+      - application/json
+      description: Update issue fields (supports status transition with role checks)
+      operationId: UpdateIssue
+      parameters:
+      - description: Issue key
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Issue update info
+        in: body
+        name: issue
+        required: true
+        schema:
+          $ref: '#/definitions/yolo-team_yolo-cli_internal_model.UpdateIssueRequest'
+      - description: CLI flag
+        in: header
+        name: X-Yolo-CLI
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Issue'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Update an issue
+      tags:
+      - Issues
+  /api/v1/issues/todo:
+    get:
+      description: Get todo list for an executor
+      operationId: TodoIssues
+      parameters:
+      - description: Executor ID
+        in: query
+        name: executor_id
+        required: true
+        type: integer
+      - description: Max results (default 20)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Issue'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Get todo issues
+      tags:
+      - Issues
+  /api/v1/projects:
+    get:
+      description: Get a list of all projects
+      operationId: ListProjects
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Project'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: List all projects
+      tags:
+      - Projects
+    post:
+      consumes:
+      - application/json
+      description: Create a new project
+      operationId: CreateProject
+      parameters:
+      - description: Project info
+        in: body
+        name: project
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.CreateProjectReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Project'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Create a project
+      tags:
+      - Projects
+  /api/v1/projects/{key}:
+    delete:
+      description: Delete a project by key
+      operationId: DeleteProject
+      parameters:
+      - description: Project key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Delete a project
+      tags:
+      - Projects
+    get:
+      description: Get project details by key
+      operationId: GetProject
+      parameters:
+      - description: Project key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Project'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Get a project
+      tags:
+      - Projects
+    put:
+      consumes:
+      - application/json
+      description: Update project name and/or description
+      operationId: UpdateProject
+      parameters:
+      - description: Project key
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Project update info
+        in: body
+        name: project
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.UpdateProjectReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Project'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Update a project
+      tags:
+      - Projects
+  /api/v1/projects/{key}/documents:
+    get:
+      description: List documents in a project
+      operationId: ListDocuments
+      parameters:
+      - description: Project key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Document'
+                  type: array
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: List documents
+      tags:
+      - Documents
+    post:
+      consumes:
+      - application/json
+      description: Create a new document in a project
+      operationId: CreateDocument
+      parameters:
+      - description: Project key
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Document info
+        in: body
+        name: document
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.CreateDocReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_handler.DocumentResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Create a document
+      tags:
+      - Documents
+swagger: "2.0"
