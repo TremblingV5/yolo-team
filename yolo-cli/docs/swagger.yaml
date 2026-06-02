@@ -61,6 +61,13 @@ definitions:
       updated_at:
         type: string
     type: object
+  internal_handler.LinkDocReq:
+    properties:
+      document_id:
+        type: integer
+      issueKey:
+        type: string
+    type: object
   internal_handler.UpdateDocReq:
     properties:
       content:
@@ -68,6 +75,15 @@ definitions:
       key:
         type: string
       title:
+        type: string
+    type: object
+  internal_handler.UpdateExecutorReq:
+    properties:
+      name:
+        type: string
+      role:
+        type: string
+      soul:
         type: string
     type: object
   internal_handler.UpdateProjectReq:
@@ -133,6 +149,10 @@ definitions:
         type: string
       description:
         type: string
+      documents:
+        items:
+          $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Document'
+        type: array
       executor_id:
         type: integer
       id:
@@ -377,6 +397,46 @@ paths:
       summary: Delete an executor
       tags:
       - Executors
+    put:
+      consumes:
+      - application/json
+      description: Update executor role and/or soul
+      operationId: UpdateExecutor
+      parameters:
+      - description: Executor name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Executor update info
+        in: body
+        name: executor
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.UpdateExecutorReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Executor'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Update an executor
+      tags:
+      - Executors
   /api/v1/issues:
     get:
       description: List issues with optional filters
@@ -505,7 +565,7 @@ paths:
     put:
       consumes:
       - application/json
-      description: Update issue fields (supports status transition with role checks)
+      description: Update issue fields
       operationId: UpdateIssue
       parameters:
       - description: Issue key
@@ -519,10 +579,6 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/yolo-team_yolo-cli_internal_model.UpdateIssueRequest'
-      - description: CLI flag
-        in: header
-        name: X-Yolo-CLI
-        type: string
       produces:
       - application/json
       responses:
@@ -539,15 +595,71 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
-        "403":
-          description: Forbidden
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Update an issue
+      tags:
+      - Issues
+  /api/v1/issues/{key}/documents:
+    delete:
+      description: Remove a document association from an issue
+      operationId: UnlinkDocument
+      parameters:
+      - description: Issue key
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Document ID
+        in: query
+        name: document_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
           schema:
             $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
         "404":
           description: Not Found
           schema:
             $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
-      summary: Update an issue
+      summary: Unlink document from issue
+      tags:
+      - Issues
+    post:
+      consumes:
+      - application/json
+      description: Associate a document with an issue
+      operationId: LinkDocument
+      parameters:
+      - description: Issue key
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Document info
+        in: body
+        name: document
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.LinkDocReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Link document to issue
       tags:
       - Issues
   /api/v1/issues/todo:

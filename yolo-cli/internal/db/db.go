@@ -6,7 +6,7 @@ import (
 	"yolo-team/yolo-cli/internal/config"
 	"yolo-team/yolo-cli/internal/model"
 
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -31,6 +31,18 @@ func Init(workspace string) error {
 		&model.Document{},
 	); err != nil {
 		return fmt.Errorf("failed to migrate: %w", err)
+	}
+
+	// Convert old status values to new 4-state system
+	oldToNew := map[string]string{
+		"design":         model.StatusInProgress,
+		"review":         model.StatusInProgress,
+		"implementation": model.StatusInProgress,
+		"qa":             model.StatusInProgress,
+		"pending_review": model.StatusInProgress,
+	}
+	for old, new := range oldToNew {
+		DB.Model(&model.Issue{}).Where("status = ?", old).Update("status", new)
 	}
 
 	return nil

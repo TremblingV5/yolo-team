@@ -1,4 +1,4 @@
-﻿package model
+package model
 
 import (
 	"fmt"
@@ -23,23 +23,20 @@ type Issue struct {
 	CreatedAt   time.Time  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 	UpdatedAt   time.Time  `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 
-	Children []Issue   `gorm:"-" json:"children,omitempty"`
-	Project  *Project  `gorm:"foreignKey:ProjectID" json:"-"`
-	Parent   *Issue    `gorm:"foreignKey:ParentID" json:"-"`
-	Executor *Executor `gorm:"foreignKey:ExecutorID" json:"-"`
+	Children  []Issue    `gorm:"-" json:"children,omitempty"`
+	Project   *Project   `gorm:"foreignKey:ProjectID" json:"-"`
+	Parent    *Issue     `gorm:"foreignKey:ParentID" json:"-"`
+	Executor  *Executor  `gorm:"foreignKey:ExecutorID" json:"executor,omitempty"`
+	Documents []Document `gorm:"many2many:issue_documents;" json:"documents,omitempty"`
 }
 
 func (Issue) TableName() string { return "issues" }
 
 const (
-	StatusCreated        = "created"
-	StatusDesign         = "design"
-	StatusReview         = "review"
-	StatusImplementation = "implementation"
-	StatusQA             = "qa"
-	StatusPendingReview  = "pending_review"
-	StatusDone           = "done"
-	StatusArchived       = "archived"
+	StatusCreated    = "created"
+	StatusInProgress = "in_progress"
+	StatusDone       = "done"
+	StatusArchived   = "archived"
 )
 
 const (
@@ -50,32 +47,7 @@ const (
 )
 
 var AllStatuses = []string{
-	StatusCreated, StatusDesign, StatusReview, StatusImplementation,
-	StatusQA, StatusPendingReview, StatusDone, StatusArchived,
-}
-
-var StatusesCLIForbidden = []string{StatusReview, StatusPendingReview, StatusArchived}
-
-type transition struct {
-	from  string
-	to    string
-	roles []string
-	cliOK bool
-}
-
-var transitions = []transition{
-	{StatusCreated, StatusDesign, []string{RoleLeader}, true},
-	{StatusDesign, StatusReview, []string{RoleLeader, RoleArchitect}, true},
-	{StatusReview, StatusImplementation, []string{RoleLeader}, false},
-	{StatusReview, StatusDesign, []string{RoleLeader, RoleQA}, false},
-	{StatusImplementation, StatusQA, []string{RoleDeveloper}, true},
-	{StatusQA, StatusPendingReview, []string{RoleQA}, true},
-	{StatusQA, StatusImplementation, []string{RoleQA}, true},
-	{StatusPendingReview, StatusDone, []string{RoleLeader}, false},
-	{StatusPendingReview, StatusDesign, []string{RoleLeader}, false},
-	{StatusPendingReview, StatusImplementation, []string{RoleLeader}, false},
-	{StatusPendingReview, StatusQA, []string{RoleLeader}, false},
-	{StatusDone, StatusArchived, nil, false},
+	StatusCreated, StatusInProgress, StatusDone, StatusArchived,
 }
 
 func NewIssue(projectID int64, title string) *Issue {
@@ -101,38 +73,6 @@ func (i *Issue) Validate() error {
 	}
 
 	return nil
-}
-
-func (i *Issue) CanTransitionTo(targetStatus, executorRole string, fromCLI bool) error {
-	if i.Status == targetStatus {
-		return nil
-	}
-
-	for _, t := range transitions {
-		if t.from == i.Status && t.to == targetStatus {
-			if fromCLI && !t.cliOK {
-				return fmt.Errorf("status transition '%s -> %s' is not allowed from CLI", i.Status, targetStatus)
-			}
-
-			if t.roles == nil {
-				return nil
-			}
-
-			if executorRole == "" {
-				return fmt.Errorf("no executor assigned")
-			}
-
-			for _, r := range t.roles {
-				if r == executorRole {
-					return nil
-				}
-			}
-
-			return fmt.Errorf("role '%s' is not allowed to move from '%s' to '%s'", executorRole, i.Status, targetStatus)
-		}
-	}
-
-	return fmt.Errorf("transition from '%s' to '%s' is not allowed", i.Status, targetStatus)
 }
 
 func (i *Issue) CanBeParent() bool {

@@ -1,4 +1,4 @@
-﻿package handler
+package handler
 
 import (
 	"context"
@@ -33,6 +33,7 @@ type CreateDocReq struct {
 	ProjectKey string `uri:"key"`
 	Title      string `json:"title"`
 	Content    string `json:"content"`
+	Creator    string `json:"creator"`
 }
 
 type GetDocReq struct {
@@ -54,6 +55,7 @@ type DocumentResponse struct {
 	Key       string    `json:"key"`
 	ProjectID int64     `json:"project_id"`
 	Title     string    `json:"title"`
+	Creator   string    `json:"creator"`
 	Content   string    `json:"content"`
 	FilePath  string    `json:"file_path"`
 	SortOrder int       `json:"sort_order"`
@@ -103,6 +105,9 @@ func (h *DocumentHandler) Create(ctx context.Context, req CreateDocReq) (Documen
 	}
 
 	doc := model.NewDocument(project.ID, req.Title)
+	if req.Creator != "" {
+		doc.Creator = req.Creator
+	}
 	if err := doc.Validate(); err != nil {
 		return DocumentResponse{}, common.NewAppError(40001, err.Error())
 	}
@@ -216,6 +221,7 @@ func newDocumentResponse(doc *model.Document, content, filePath string) Document
 		Key:       doc.Key,
 		ProjectID: doc.ProjectID,
 		Title:     doc.Title,
+		Creator:   doc.Creator,
 		Content:   content,
 		FilePath:  filePath,
 		SortOrder: doc.SortOrder,

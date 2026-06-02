@@ -10,7 +10,7 @@
 - [x] 自动处理 JSON 序列化、错误响应解析
 
 ### 5.2 初始化命令
-- [ ] `yolo init --workspace <path>` — 未实现
+- [x] `yolo init --workspace <path>`
 
 ### 5.3 服务命令
 

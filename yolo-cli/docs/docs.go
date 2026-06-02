@@ -261,6 +261,70 @@ const docTemplate = `{
             }
         },
         "/api/v1/executors/{name}": {
+            "put": {
+                "description": "Update executor role and/or soul",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Executors"
+                ],
+                "summary": "Update an executor",
+                "operationId": "UpdateExecutor",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Executor name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Executor update info",
+                        "name": "executor",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.UpdateExecutorReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_model.Executor"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    }
+                }
+            },
             "delete": {
                 "description": "Delete an executor by name",
                 "produces": [
@@ -526,7 +590,7 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "Update issue fields (supports status transition with role checks)",
+                "description": "Update issue fields",
                 "consumes": [
                     "application/json"
                 ],
@@ -554,12 +618,6 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/yolo-team_yolo-cli_internal_model.UpdateIssueRequest"
                         }
-                    },
-                    {
-                        "type": "string",
-                        "description": "CLI flag",
-                        "name": "X-Yolo-CLI",
-                        "in": "header"
                     }
                 ],
                 "responses": {
@@ -583,12 +641,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
                         }
@@ -617,6 +669,95 @@ const docTemplate = `{
                         "description": "Issue key",
                         "name": "key",
                         "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/issues/{key}/documents": {
+            "post": {
+                "description": "Associate a document with an issue",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Issues"
+                ],
+                "summary": "Link document to issue",
+                "operationId": "LinkDocument",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Issue key",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Document info",
+                        "name": "document",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.LinkDocReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove a document association from an issue",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Issues"
+                ],
+                "summary": "Unlink document from issue",
+                "operationId": "UnlinkDocument",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Issue key",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Document ID",
+                        "name": "document_id",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -1092,6 +1233,17 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.LinkDocReq": {
+            "type": "object",
+            "properties": {
+                "document_id": {
+                    "type": "integer"
+                },
+                "issueKey": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.UpdateDocReq": {
             "type": "object",
             "properties": {
@@ -1102,6 +1254,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.UpdateExecutorReq": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "soul": {
                     "type": "string"
                 }
             }
@@ -1201,6 +1367,12 @@ const docTemplate = `{
                 },
                 "description": {
                     "type": "string"
+                },
+                "documents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/yolo-team_yolo-cli_internal_model.Document"
+                    }
                 },
                 "executor_id": {
                     "type": "integer"

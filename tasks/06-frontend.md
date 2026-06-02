@@ -9,80 +9,59 @@
 ### 6.1 项目初始化
 
 - [x] 创建 `yolo-client` 项目（React 18 + Vite + TypeScript）
-- [x] 安装依赖：`antd`、`@ant-design/icons`、`react-router-dom`、`dayjs`
-- [x] 实现变更为：使用手写 `api.ts` 封装 HTTP 请求，未使用 `restful-react`
-- [ ] ~~配置 `.umirc.ts`：代理 `/api` → `http://localhost:8080`~~（Vite 项目，使用 Vite proxy 或直接跨域）
+- [x] 安装依赖：`antd`、`@ant-design/icons`、`react-router-dom`、`dayjs`、`restful-react`、`react-markdown`、`@dnd-kit/core`
+- [x] 使用 `restful-react` 从 swagger.json 自动生成 `src/generated.tsx`
+- [x] Vite proxy 配置 `/api` → `http://localhost:8080`
 
 ### 6.2 全局看板（`/`）
 
-**页面布局**：
-
-```
-┌─────────────────────────────────────────────────┐
-│ [项目: 全部项目 ▼]               [+新建项目] [⚙] │
-├─────────────────────────────────────────────────┤
-│ 已创建 │ 方案设计 │ 方案评审 │ 代码实现 │ QA质检 │ 待审查 │ 已完成 │ 已归档 │
-│ (8列)  │         │         │         │        │        │        │        │
-└─────────────────────────────────────────────────┘
-```
-
-- [x] 顶栏：项目下拉菜单（"全部项目" + 各项目），新建项目按钮、项目管理按钮
+- [x] 顶栏：项目下拉菜单、新建项目、项目管理、文档按钮
 - [x] 8 列看板：每列按 status 分组展示 Issue 卡片
-- [x] 卡片内容：标题、优先级标签、执行人标签、截至时间、仓库标记
-- [ ] 拖拽：卡片跨列拖拽 → `PUT /api/v1/issues/:key {status}`
-- [x] 新建 Issue：仅在"已创建"列顶部 `+` → 弹窗表单
-- [ ] 快速指派：点击执行人 → 下拉选择
-- [ ] 归档操作：已完成的卡片点击"归档" → `archived`
+- [x] 卡片内容：标题、优先级标签、截至时间、仓库标记
+- [x] 拖拽：卡片跨列拖拽 → `PUT /api/v1/issues/:key {status}` + 乐观更新 + 失败回滚
+- [x] 快速指派：卡片上执行人下拉 → `PUT /api/v1/issues/:key {executor_id}` + 乐观更新
+- [x] 归档操作：done 卡片"归档"按钮 → `PUT /api/v1/issues/:key {status: 'archived'}` + 乐观更新
+- [x] 新建 Issue："已创建"列 `+` → 抽屉表单
 
 ### 6.3 Issue 详情抽屉
 
-- [x] 点击卡片 → 左侧弹出 Ant Design Drawer
-- [x] 抽屉内容：
-  - 顶部：Key 标签 / 状态徽章 / 优先级标签
-  - 编辑区：标题（可编辑）、描述（可编辑）
-  - 属性区：执行人下拉、状态下拉
-  - 仓库区：URL/名称/分支 输入框
-  - 底部：保存 / 删除按钮
-- [x] 关闭抽屉：点击遮罩或 X → 回到看板
+- [x] 点击卡片 → 左侧 Ant Design Drawer
+- [x] 编辑区：标题、描述、状态下拉、优先级、执行人、仓库信息
+- [x] 底部：保存 / 删除按钮
 
 ### 6.4 项目管理（`/project/:key/manage`）
 
-- [x] 表单编辑项目名称（≤32）和描述（≤128）
+- [x] 表单编辑项目名称和描述
 - [x] 保存调用 `PUT /api/v1/projects/:key`
-- [x] 返回按钮
 
 ### 6.5 文档列表（`/project/:key/docs`）
 
 - [x] 表格展示文档 key、title、更新时间
-- [x] 新建文档：输入标题 → `POST /api/v1/projects/:key/documents`
-- [x] 点击查看 → 跳转文档详情
-- [ ] 删除文档功能
+- [x] 新建文档
+- [x] 删除文档（Popconfirm 确认）
 
 ### 6.6 文档详情（`/doc/:key`）
 
-- [x] 展示正文内容
-- [x] 编辑模式切换（textarea 编辑）
-- [x] 显示 `file_path` 供参考
+- [x] Markdown 渲染（react-markdown）
+- [x] 编辑模式切换
 - [x] 保存 → `PUT /api/v1/documents/:key`
-- [ ] ~~Markdown 渲染展示正文~~（当前使用 `<pre>` 标签纯文本展示）
 
 ### 6.7 API 封装
 
-- [x] 手写 API 客户端在 `src/api.ts`
-- [x] 所有组件通过 `api.xxx.yyy()` 调用 API，不手写请求逻辑
-- [ ] ~~使用 restful-react 自动生成 TypeScript 类型和请求函数~~（改为手动维护）
+- [x] `restful-react` 自动生成类型和 hooks
+- [x] 所有组件通过生成的 hooks 调用 API
 
-### 6.8 状态管理
+### 6.8 组件化
 
-- [x] 看板数据使用 React hooks（useState + useEffect）
-- [x] 项目筛选 → 重新请求 `GET /api/v1/issues?project_id=`
-- [ ] 拖拽/编辑后乐观更新或重新获取
+- [x] 组件：`TopBar`、`IssueCard`、`KanbanBoard`（含 `DraggableIssueCard`、`KanbanColumn`）、`CreateIssueForm`、`IssueDrawer`、`CreateProjectModal`
+- [x] 页面：`KanbanPage`、`ProjectManage`、`DocumentList`、`DocumentDetail`
+- [x] 常量：`constants.ts`
 
 ## 验收标准
 
-- [x] 全局看板展示所有 Issue，8 列正确分列
-- [x] 项目筛选下拉可用，动态刷新看板
-- [ ] 拖拽卡片可改变状态，非法操作回弹
-- [x] 左侧抽屉、项目管理、文档页面功能完整
-- [ ] 状态流转受角色限制（前端做基本校验）
-- [ ] 开发模式下 API 代理正常工作
+- [x] 全局看板 8 列展示 + 项目筛选
+- [x] 拖拽卡片可改变状态，网络错误自动回滚
+- [x] 快速指派执行人，乐观更新
+- [x] 归档操作
+- [x] 文档 CRUD 完整，Markdown 渲染
+- [x] API 代理正常工作

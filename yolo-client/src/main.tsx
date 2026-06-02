@@ -7,7 +7,9 @@ import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RestfulProvider base="/api/v1">
+    {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+    {/* @ts-ignore restful-react + React 18 类型兼容 */}
+    <RestfulProvider base="">
       <BrowserRouter>
         <App />
       </BrowserRouter>

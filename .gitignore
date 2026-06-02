@@ -17,11 +17,12 @@
 # Frontend
 yolo-client/node_modules/
 yolo-client/dist/
-yolo-cli/client-dist/
+yolo-cli/internal/frontend/client-dist/*
+!yolo-cli/internal/frontend/client-dist/.gitkeep
 
 # Generated (frontend)
 yolo-client/swagger.json
-yolo-client/src/generated.ts
+yolo-client/src/generated.tsx
 
 # IDE
 .vscode/
@@ -33,3 +34,5 @@ yolo-client/src/generated.ts
 # OS
 .DS_Store
 Thumbs.db
+
+documents/

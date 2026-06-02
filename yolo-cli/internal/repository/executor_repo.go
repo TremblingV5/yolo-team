@@ -72,6 +72,17 @@ func (r *ExecutorRepo) UpdateRole(id int64, role string) error {
 	return nil
 }
 
+func (r *ExecutorRepo) UpdateSoul(id int64, soul string) error {
+	_, err := db.G[model.Executor]().
+		Where(query.Executor.ID.Eq(id)).
+		Update(context.Background(), "soul", soul)
+	if err != nil {
+		return fmt.Errorf("update soul: %w", err)
+	}
+
+	return nil
+}
+
 func (r *ExecutorRepo) FindByNamePrefix(prefix string, limit int) ([]model.Executor, error) {
 	executors, err := db.G[model.Executor]().
 		Where(query.Executor.Name.Like(prefix + "%")).

@@ -27,31 +27,29 @@ type IssueFilter struct {
 }
 
 func (r *IssueRepo) List(filter IssueFilter) ([]model.Issue, error) {
-	g := db.G[model.Issue]().Where(query.Issue.ID.Neq(0))
+	q := db.DB.Model(&model.Issue{}).Preload("Executor").Preload("Documents")
 	if filter.ProjectID != nil {
-		g = g.Where(query.Issue.ProjectID.Eq(*filter.ProjectID))
+		q = q.Where("project_id = ?", *filter.ProjectID)
 	}
 
 	if filter.Status != nil {
-		g = g.Where(query.Issue.Status.Eq(*filter.Status))
+		q = q.Where("status = ?", *filter.Status)
 	}
 
 	if filter.ParentID != nil {
-		g = g.Where(query.Issue.ParentID.Eq(*filter.ParentID))
+		q = q.Where("parent_id = ?", *filter.ParentID)
 	}
 
 	if filter.ExecutorID != nil {
-		g = g.Where(query.Issue.ExecutorID.Eq(*filter.ExecutorID))
+		q = q.Where("executor_id = ?", *filter.ExecutorID)
 	}
 
 	if filter.OnlyTop {
-		g = g.Where(query.Issue.ParentID.IsNull())
+		q = q.Where("parent_id IS NULL")
 	}
 
-	issues, err := g.
-		Order(query.Issue.SortOrder.Asc()).
-		Order(query.Issue.CreatedAt.Desc()).
-		Find(context.Background())
+	var issues []model.Issue
+	err := q.Order("sort_order ASC, created_at DESC").Find(&issues).Error
 	return issues, err
 }
 
@@ -90,9 +88,8 @@ func (r *IssueRepo) Create(issue *model.Issue) error {
 }
 
 func (r *IssueRepo) GetByKey(key string) (*model.Issue, error) {
-	i, err := db.G[model.Issue]().
-		Where(query.Issue.Key.Eq(key)).
-		First(context.Background())
+	var i model.Issue
+	err := db.DB.Preload("Executor").Preload("Documents").Where("key = ?", key).First(&i).Error
 	if err != nil {
 		return nil, err
 	}
@@ -179,4 +176,16 @@ func (r *IssueRepo) TopIssuesByProject(projectID int64) ([]model.Issue, error) {
 	}
 
 	return issues, nil
+}
+
+func (r *IssueRepo) LinkDocument(issueID int64, documentID int64) error {
+	return db.DB.Model(&model.Issue{ID: issueID}).
+		Association("Documents").
+		Append(&model.Document{ID: documentID})
+}
+
+func (r *IssueRepo) UnlinkDocument(issueID int64, documentID int64) error {
+	return db.DB.Model(&model.Issue{ID: issueID}).
+		Association("Documents").
+		Delete(&model.Document{ID: documentID})
 }

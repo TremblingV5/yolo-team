@@ -1,4 +1,4 @@
-﻿package handler
+package handler
 
 import (
 	"context"
@@ -24,6 +24,12 @@ type CreateExecutorReq struct {
 
 type DeleteExecutorReq struct {
 	Name string `uri:"name"`
+}
+
+type UpdateExecutorReq struct {
+	Name string `uri:"name"`
+	Role string `json:"role"`
+	Soul string `json:"soul"`
 }
 
 // ListExecutors godoc
@@ -69,6 +75,48 @@ func (h *ExecutorHandler) Create(ctx context.Context, req CreateExecutorReq) (*m
 	}
 
 	return result, nil
+}
+
+// UpdateExecutor godoc
+//
+//	@Id				UpdateExecutor
+//	@Summary		Update an executor
+//	@Description	Update executor role and/or soul
+//	@Tags			Executors
+//	@Accept			json
+//	@Produce		json
+//	@Param			name		path		string				true	"Executor name"
+//	@Param			executor	body		UpdateExecutorReq	true	"Executor update info"
+//	@Success		200			{object}	common.Response{data=model.Executor}
+//	@Failure		400			{object}	common.Response
+//	@Failure		404			{object}	common.Response
+//	@Router			/api/v1/executors/{name} [put]
+func (h *ExecutorHandler) Update(ctx context.Context, req UpdateExecutorReq) (*model.Executor, error) {
+	executor, err := h.repo.GetByName(req.Name)
+	if err != nil {
+		return nil, common.NewAppError(40401, "executor not found")
+	}
+
+	if req.Role != "" {
+		executor.SetRole(req.Role)
+		if err := executor.Validate(); err != nil {
+			return nil, common.NewAppError(40001, err.Error())
+		}
+	}
+
+	if req.Soul != "" {
+		executor.Soul = req.Soul
+	}
+
+	if err := h.repo.UpdateRole(executor.ID, executor.Role); err != nil {
+		return nil, common.NewAppError(40001, err.Error())
+	}
+
+	if req.Soul != "" {
+		h.repo.UpdateSoul(executor.ID, req.Soul)
+	}
+
+	return h.repo.GetByID(executor.ID)
 }
 
 // DeleteExecutor godoc

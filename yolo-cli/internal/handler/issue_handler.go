@@ -12,12 +12,14 @@ import (
 type IssueHandler struct {
 	repo     *repository.IssueRepo
 	execRepo *repository.ExecutorRepo
+	docRepo  *repository.DocumentRepo
 }
 
 func NewIssueHandler() *IssueHandler {
 	return &IssueHandler{
 		repo:     repository.NewIssueRepo(),
 		execRepo: repository.NewExecutorRepo(),
+		docRepo:  repository.NewDocumentRepo(),
 	}
 }
 
@@ -43,8 +45,7 @@ type GetIssueReq struct {
 }
 
 type UpdateIssueReq struct {
-	Key   string `uri:"key"`
-	IsCLI string `header:"X-Yolo-CLI"`
+	Key string `uri:"key"`
 	model.UpdateIssueRequest
 }
 
@@ -55,6 +56,16 @@ type DeleteIssueReq struct {
 type TodoIssueReq struct {
 	ExecutorID int64 `form:"executor_id"`
 	Limit      int   `form:"limit"`
+}
+
+type LinkDocReq struct {
+	IssueKey   string `uri:"key"`
+	DocumentID int64  `json:"document_id"`
+}
+
+type UnlinkDocReq struct {
+	IssueKey   string `uri:"key"`
+	DocumentID int64  `form:"document_id"`
 }
 
 // ListIssues godoc
@@ -158,37 +169,20 @@ func (h *IssueHandler) Get(ctx context.Context, req GetIssueReq) (*model.Issue, 
 //
 //	@Id				UpdateIssue
 //	@Summary		Update an issue
-//	@Description	Update issue fields (supports status transition with role checks)
+//	@Description	Update issue fields
 //	@Tags			Issues
 //	@Accept			json
 //	@Produce		json
-//	@Param			key		path		string				true	"Issue key"
+//	@Param			key		path		string						true	"Issue key"
 //	@Param			issue	body		model.UpdateIssueRequest	true	"Issue update info"
-//	@Param			X-Yolo-CLI	header	string	false	"CLI flag"
-//	@Success		200			{object}	common.Response{data=model.Issue}
-//	@Failure		400			{object}	common.Response
-//	@Failure		403			{object}	common.Response
-//	@Failure		404			{object}	common.Response
+//	@Success		200		{object}	common.Response{data=model.Issue}
+//	@Failure		400		{object}	common.Response
+//	@Failure		404		{object}	common.Response
 //	@Router			/api/v1/issues/{key} [put]
 func (h *IssueHandler) Update(ctx context.Context, req UpdateIssueReq) (*model.Issue, error) {
 	issue, err := h.repo.GetByKey(req.Key)
 	if err != nil {
 		return nil, common.NewAppError(40401, "issue not found")
-	}
-
-	fromCLI := req.IsCLI == "true"
-
-	if req.Status != nil {
-		executorRole := ""
-		if issue.ExecutorID != nil {
-			if exec, err := h.execRepo.GetByID(*issue.ExecutorID); err == nil {
-				executorRole = exec.Role
-			}
-		}
-
-		if err := issue.CanTransitionTo(*req.Status, executorRole, fromCLI); err != nil {
-			return nil, common.NewAppError(40301, err.Error())
-		}
 	}
 
 	issue.ApplyUpdate(&req.UpdateIssueRequest)
@@ -245,4 +239,55 @@ func (h *IssueHandler) Todo(ctx context.Context, req TodoIssueReq) ([]model.Issu
 	}
 
 	return h.repo.GetTodo(req.ExecutorID, req.Limit)
+}
+
+// LinkDocument godoc
+//
+//	@Id				LinkDocument
+//	@Summary		Link document to issue
+//	@Description	Associate a document with an issue
+//	@Tags			Issues
+//	@Accept			json
+//	@Produce		json
+//	@Param			key			path		string		true	"Issue key"
+//	@Param			document	body		LinkDocReq	true	"Document info"
+//	@Success		200			{object}	common.Response
+//	@Failure		404			{object}	common.Response
+//	@Router			/api/v1/issues/{key}/documents [post]
+func (h *IssueHandler) LinkDocument(ctx context.Context, req LinkDocReq) (struct{}, error) {
+	issue, err := h.repo.GetByKey(req.IssueKey)
+	if err != nil {
+		return struct{}{}, common.NewAppError(40401, "issue not found")
+	}
+
+	if err := h.repo.LinkDocument(issue.ID, req.DocumentID); err != nil {
+		return struct{}{}, common.NewAppError(40001, err.Error())
+	}
+
+	return struct{}{}, nil
+}
+
+// UnlinkDocument godoc
+//
+//	@Id				UnlinkDocument
+//	@Summary		Unlink document from issue
+//	@Description	Remove a document association from an issue
+//	@Tags			Issues
+//	@Produce		json
+//	@Param			key			path		string	true	"Issue key"
+//	@Param			document_id	query		int		true	"Document ID"
+//	@Success		200			{object}	common.Response
+//	@Failure		404			{object}	common.Response
+//	@Router			/api/v1/issues/{key}/documents [delete]
+func (h *IssueHandler) UnlinkDocument(ctx context.Context, req UnlinkDocReq) (struct{}, error) {
+	issue, err := h.repo.GetByKey(req.IssueKey)
+	if err != nil {
+		return struct{}{}, common.NewAppError(40401, "issue not found")
+	}
+
+	if err := h.repo.UnlinkDocument(issue.ID, req.DocumentID); err != nil {
+		return struct{}{}, common.NewAppError(40001, err.Error())
+	}
+
+	return struct{}{}, nil
 }

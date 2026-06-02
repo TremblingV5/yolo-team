@@ -1,4 +1,4 @@
-﻿package model
+package model
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ type Document struct {
 	Key       string    `gorm:"column:key;type:varchar(64);uniqueIndex;not null" json:"key"`
 	ProjectID int64     `gorm:"column:project_id;not null;index" json:"project_id"`
 	Title     string    `gorm:"column:title;type:varchar(128);not null" json:"title"`
+	Creator   string    `gorm:"column:creator;type:varchar(64);default:'人类'" json:"creator"`
 	SortOrder int       `gorm:"column:sort_order;default:0" json:"sort_order"`
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
