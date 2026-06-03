@@ -1,33 +1,61 @@
-﻿package cmd
+package cmd
 
 import (
-	"encoding/json"
 	"fmt"
+
+	"yolo-team/yolo-cli/internal/handler"
 
 	"github.com/spf13/cobra"
 )
 
 var executorCmd = &cobra.Command{Use: "executor", Short: "Manage executors"}
 
+var (
+	execCreateName string
+	execCreateSoul string
+)
+
+var executorCreateCmd = &cobra.Command{
+	Use:    "create",
+	Short:  "Create an executor",
+	Hidden: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if execCreateName == "" {
+			return fmt.Errorf("name (-n) is required")
+		}
+		h := handler.NewExecutorHandler()
+		e, err := h.Create(ctx, handler.CreateExecutorReq{Name: execCreateName, Soul: execCreateSoul})
+		if err != nil {
+			return err
+		}
+		if useJSON {
+			printJSON(map[string]interface{}{"data": e})
+			return nil
+		}
+		fmt.Printf("Executor created: %s (ID: %d)\n", e.Name, e.ID)
+		return nil
+	},
+}
+
 var executorListCmd = &cobra.Command{
 	Use: "list", Short: "List all executors",
-	Run: func(cmd *cobra.Command, args []string) {
-		var resp apiResponse
-		must(apiGet("/executors", &resp))
+	RunE: func(cmd *cobra.Command, args []string) error {
+		h := handler.NewExecutorHandler()
+		executors, err := h.List(ctx, struct{}{})
+		if err != nil {
+			return err
+		}
 		if useJSON {
-			printJSON(resp)
-			return
+			printJSON(map[string]interface{}{"data": executors})
+			return nil
 		}
 
-		var executors []map[string]interface{}
-		json.Unmarshal(resp.Data, &executors)
 		fmt.Printf("%-4s %-20s %-12s %-20s\n", "ID", "NAME", "ROLE", "CREATED")
 		for _, e := range executors {
-			fmt.Printf("%-4.0f %-20s %-12s %-20s\n",
-				e["id"], e["name"], e["role"],
-				fmt.Sprintf("%v", e["created_at"])[:20])
+			fmt.Printf("%-4d %-20s %-12s %-20s\n",
+				e.ID, e.Name, e.Role, fmtTime(e.CreatedAt))
 		}
-
+		return nil
 	},
 }
 
@@ -37,67 +65,74 @@ var (
 	docListProject string
 	docCreateProj  string
 	docCreateTitle string
+	docCreateContent string
 )
 
 var docListCmd = &cobra.Command{
 	Use: "list", Short: "List documents in a project",
-	Run: func(cmd *cobra.Command, args []string) {
-		var resp apiResponse
-		must(apiGet("/projects/"+docListProject+"/documents", &resp))
+	RunE: func(cmd *cobra.Command, args []string) error {
+		h := handler.NewDocumentHandler(workspace())
+		docs, err := h.List(ctx, handler.ListDocReq{ProjectKey: docListProject})
+		if err != nil {
+			return err
+		}
 		if useJSON {
-			printJSON(resp)
-			return
+			printJSON(map[string]interface{}{"data": docs})
+			return nil
 		}
 
-		var docs []map[string]interface{}
-		json.Unmarshal(resp.Data, &docs)
-		fmt.Printf("%-18s %-20s %-20s\n", "KEY", "TITLE", "UPDATED")
+		fmt.Printf("%-18s %-20s %-10s %-20s\n", "KEY", "TITLE", "CREATOR", "UPDATED")
 		for _, d := range docs {
-			fmt.Printf("%-18s %-20s %-20s\n", d["key"], d["title"],
-				fmt.Sprintf("%v", d["updated_at"])[:20])
+			fmt.Printf("%-18s %-20s %-10s %-20s\n", d.Key, d.Title, d.Creator, fmtTime(d.UpdatedAt))
 		}
-
+		return nil
 	},
 }
 
 var docCreateCmd = &cobra.Command{
 	Use: "create", Short: "Create a document",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		body := map[string]interface{}{
-			"title":   docCreateTitle,
-			"content": "",
+		h := handler.NewDocumentHandler(workspace())
+		doc, err := h.Create(ctx, handler.CreateDocReq{
+			ProjectKey: docCreateProj,
+			Title:      docCreateTitle,
+			Content:    docCreateContent,
+			Creator:    "CLI",
+		})
+		if err != nil {
+			return err
 		}
-
-		var resp apiResponse
-		must(apiPost("/projects/"+docCreateProj+"/documents", body, &resp))
-		var doc map[string]interface{}
-		json.Unmarshal(resp.Data, &doc)
-		fmt.Printf("Document created: %v\n", doc["key"])
-		fmt.Printf("Path: %v\n", doc["file_path"])
+		fmt.Printf("Document created: %s\n", doc.Key)
+		fmt.Printf("Path: %s\n", doc.FilePath)
 		return nil
 	},
 }
 
 var docInfoCmd = &cobra.Command{
 	Use: "info <key>", Short: "Show document details", Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		var resp apiResponse
-		must(apiGet("/documents/"+args[0], &resp))
+	RunE: func(cmd *cobra.Command, args []string) error {
+		h := handler.NewDocumentHandler(workspace())
+		doc, err := h.Get(ctx, handler.GetDocReq{Key: args[0]})
+		if err != nil {
+			return err
+		}
 		if useJSON {
-			printJSON(resp)
-			return
+			printJSON(map[string]interface{}{"data": doc})
+			return nil
 		}
 
-		var doc map[string]interface{}
-		json.Unmarshal(resp.Data, &doc)
-		fmt.Printf("File: %v\n\n", doc["file_path"])
-		fmt.Printf("%v\n", doc["content"])
+		fmt.Printf("File: %s\n\n", doc.FilePath)
+		fmt.Printf("%s\n", doc.Content)
+		return nil
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(executorCmd)
-	executorCmd.AddCommand(executorListCmd)
+	executorCmd.AddCommand(executorCreateCmd, executorListCmd)
+
+	executorCreateCmd.Flags().StringVarP(&execCreateName, "name", "n", "", "executor name (required)")
+	executorCreateCmd.Flags().StringVarP(&execCreateSoul, "soul", "s", "", "executor soul/prompt")
 
 	rootCmd.AddCommand(docCmd)
 	docCmd.AddCommand(docListCmd, docCreateCmd, docInfoCmd)
@@ -105,4 +140,5 @@ func init() {
 	docListCmd.Flags().StringVarP(&docListProject, "project", "p", "", "project key (required)")
 	docCreateCmd.Flags().StringVarP(&docCreateProj, "project", "p", "", "project key (required)")
 	docCreateCmd.Flags().StringVarP(&docCreateTitle, "title", "t", "", "document title (required)")
+	docCreateCmd.Flags().StringVarP(&docCreateContent, "content", "c", "", "document content")
 }

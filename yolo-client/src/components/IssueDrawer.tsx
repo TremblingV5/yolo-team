@@ -1,5 +1,5 @@
 import { PlusOutlined } from '@ant-design/icons'
-import { Button, Form, Input, Modal, Select, Tag, message } from 'antd'
+import { Button, Form, Input, Modal, Select, Space, Tag, message } from 'antd'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { STATUSES, STATUS_NAMES } from '../constants'
@@ -28,7 +28,6 @@ export default function IssueDrawer({ issue, executors, projectDocs, projectKey,
   const [priority, setPriority] = useState(issue.priority || '')
   const [execId, setExecId] = useState(issue.executor_id)
   const [repoUrl, setRepoUrl] = useState(issue.repo_url || '')
-  const [repoName, setRepoName] = useState(issue.repo_name || '')
   const [branch, setBranch] = useState(issue.branch_name || '')
   const [docModal, setDocModal] = useState(false)
   const [newDocTitle, setNewDocTitle] = useState('')
@@ -42,7 +41,7 @@ export default function IssueDrawer({ issue, executors, projectDocs, projectKey,
     try {
       await updateMutate({
         title, description: desc, status, priority,
-        executor_id: execId, repo_url: repoUrl, repo_name: repoName, branch_name: branch,
+        executor_id: execId, repo_url: repoUrl, branch_name: branch,
       } as any)
       message.success('已保存')
       onSaved()
@@ -66,12 +65,8 @@ export default function IssueDrawer({ issue, executors, projectDocs, projectKey,
         body: JSON.stringify({ document_id: docId }),
       })
       const json = await resp.json()
-      if (json.code === 0) {
-        message.success('已关联')
-        onSaved()
-      } else {
-        message.error(json.message)
-      }
+      if (json.code === 0) { message.success('已关联'); onSaved() }
+      else { message.error(json.message) }
     } catch (e: any) { message.error(e.message) }
   }
 
@@ -79,33 +74,8 @@ export default function IssueDrawer({ issue, executors, projectDocs, projectKey,
     try {
       const resp = await fetch(`/api/v1/issues/${issue.key}/documents?document_id=${docId}`, { method: 'DELETE' })
       const json = await resp.json()
-      if (json.code === 0) {
-        message.success('已取消关联')
-        onSaved()
-      } else {
-        message.error(json.message)
-      }
-    } catch (e: any) { message.error(e.message) }
-  }
-
-  const handleCreateAndLinkDoc = async () => {
-    if (!newDocTitle || !projectKey) return
-    try {
-      const resp = await fetch(`/api/v1/projects/${projectKey}/documents`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newDocTitle, content: '', creator: '人类' }),
-      })
-      const json = await resp.json()
-      if (json.code === 0) {
-        const newDocId = json.data.id
-        await handleLinkDoc(newDocId)
-        setNewDocTitle('')
-        setDocModal(false)
-        onSaved()
-      } else {
-        message.error(json.message || '创建失败')
-      }
+      if (json.code === 0) { message.success('已取消关联'); onSaved() }
+      else { message.error(json.message) }
     } catch (e: any) { message.error(e.message) }
   }
 
@@ -122,86 +92,95 @@ export default function IssueDrawer({ issue, executors, projectDocs, projectKey,
   )
 
   return (
-    <div>
-      <p>
-        <Tag>{issue.key}</Tag>
-        <Tag color="blue">{STATUS_NAMES[issue.status || '']}</Tag>
-      </p>
-      <Form layout="vertical">
-        <Form.Item label="标题">
-          <Input value={title} onChange={e => setTitle(e.target.value)} />
-        </Form.Item>
-        <Form.Item label="描述">
-          <Input.TextArea rows={4} value={desc} onChange={e => setDesc(e.target.value)} />
-        </Form.Item>
-        <Form.Item label="状态">
-          <Select value={status} onChange={setStatus}
-            options={STATUSES.map(s => ({ label: STATUS_NAMES[s], value: s }))} />
-        </Form.Item>
-        <Form.Item label="优先级">
-          <Select value={priority} onChange={setPriority}
-            options={['critical', 'high', 'medium', 'low'].map(p => ({ label: p, value: p }))} />
-        </Form.Item>
-        <Form.Item label="执行人">
-          <Select value={execId} onChange={setExecId} allowClear
-            options={executors.map(e => ({ label: e.name, value: e.id }))} />
-        </Form.Item>
-        <Form.Item label="仓库 URL">
-          <Input value={repoUrl} onChange={e => setRepoUrl(e.target.value)} />
-        </Form.Item>
-        <Form.Item label="仓库名称">
-          <Input value={repoName} onChange={e => setRepoName(e.target.value)} />
-        </Form.Item>
-        <Form.Item label="分支">
-          <Input value={branch} onChange={e => setBranch(e.target.value)} />
-        </Form.Item>
-      </Form>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ flex: 1, overflow: 'auto', paddingBottom: 70 }}>
+        <Form layout="vertical" size="middle">
 
-      <div style={{ marginBottom: 16 }}>
-        <strong>关联文档</strong>
-        <Button size="small" style={{ marginLeft: 8 }} onClick={() => setDocModal(true)}>+</Button>
-        {linkedDocs.length === 0 && <div style={{ color: '#999', fontSize: 12 }}>暂无关联文档</div>}
-        {linkedDocs.map((d: any) => (
-          <Tag key={d.id} closable onClose={() => handleUnlinkDoc(d.id)}>{d.title}</Tag>
-        ))}
+          {/* Row 1: key + status + priority */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16 }}>
+            <Tag color="default" style={{ fontSize: 13, padding: '2px 10px', margin: 0 }}>
+              {issue.key}
+            </Tag>
+            <Select size="small" value={status} onChange={setStatus} style={{ width: 110 }}
+              options={STATUSES.map(s => ({ label: STATUS_NAMES[s], value: s }))} />
+            <Select size="small" value={priority} onChange={setPriority} style={{ width: 100 }}
+              options={['critical', 'high', 'medium', 'low'].map(p => ({ label: p, value: p }))} />
+          </div>
+
+          {/* Row 2: title */}
+          <Form.Item label="标题">
+            <Input value={title} onChange={e => setTitle(e.target.value)} />
+          </Form.Item>
+
+          {/* Row 3: description */}
+          <Form.Item label="描述">
+            <Input.TextArea rows={3} value={desc} onChange={e => setDesc(e.target.value)} />
+          </Form.Item>
+
+          {/* Row 4: executor */}
+          <Form.Item label="执行人">
+            <Select value={execId} onChange={setExecId} allowClear placeholder="选择执行人"
+              options={executors.map(e => ({ label: e.name, value: e.id }))} />
+          </Form.Item>
+
+          {/* Row 5: repo URL */}
+          <Form.Item label="仓库 URL">
+            <Input value={repoUrl} onChange={e => setRepoUrl(e.target.value)} placeholder="https://github.com/..." />
+          </Form.Item>
+
+          {/* Row 6: branch */}
+          <Form.Item label="分支">
+            <Input value={branch} onChange={e => setBranch(e.target.value)} placeholder="main" />
+          </Form.Item>
+
+          {/* Row 7: linked docs */}
+          <Form.Item label="关联文档">
+            <div style={{ marginBottom: 6 }}>
+              <Button size="small" icon={<PlusOutlined />} onClick={() => setDocModal(true)}>添加文档</Button>
+            </div>
+            {linkedDocs.length === 0 ? (
+              <span style={{ color: '#bbb', fontSize: 13 }}>暂无</span>
+            ) : (
+              <Space wrap>
+                {linkedDocs.map((d: any) => (
+                  <Tag key={d.id} closable onClose={() => handleUnlinkDoc(d.id)} color="processing">
+                    {d.title}
+                  </Tag>
+                ))}
+              </Space>
+            )}
+          </Form.Item>
+        </Form>
       </div>
 
-      <Button type="primary" onClick={handleSave}>保存</Button>
-      <Button danger style={{ marginLeft: 8 }} onClick={handleDelete}>删除</Button>
+      {/* Sticky footer */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        padding: '12px 24px', background: '#fff', borderTop: '1px solid #f0f0f0',
+        display: 'flex', gap: 8,
+      }}>
+        <Button type="primary" onClick={handleSave} style={{ flex: 1 }}>保存</Button>
+        <Button danger onClick={handleDelete}>删除</Button>
+      </div>
 
+      {/* Doc Modal */}
       <Modal title="关联文档" open={docModal} onCancel={() => { setDocModal(false); setNewDocTitle('') }} footer={null} width={480}>
         <Input.Search
-          placeholder="搜索已有文档..."
-          value={newDocTitle}
-          onChange={e => setNewDocTitle(e.target.value)}
-          allowClear
-          enterButton="检索"
-          style={{ marginBottom: 12 }}
+          placeholder="搜索已有文档..." value={newDocTitle} onChange={e => setNewDocTitle(e.target.value)}
+          allowClear enterButton="检索" style={{ marginBottom: 12 }}
         />
-        <Button
-          type="dashed"
-          icon={<PlusOutlined />}
-          block
-          onClick={() => {
-            setDocModal(false)
-            setNewDocTitle('')
-            handleCreateAndEdit()
-          }}
-          style={{ marginBottom: 12 }}
-        >
+        <Button type="dashed" icon={<PlusOutlined />} block onClick={handleCreateAndEdit} style={{ marginBottom: 12 }}>
           新建文档并关联
         </Button>
         <div style={{ maxHeight: 280, overflowY: 'auto' }}>
           {availableDocs.map((d: any) => (
             <div key={d.id} style={{
               padding: '8px 12px', cursor: 'pointer', borderRadius: 6,
-              marginBottom: 4, transition: 'background 0.2s',
-              background: '#fafafa', border: '1px solid #f0f0f0',
+              marginBottom: 4, background: '#fafafa', border: '1px solid #f0f0f0',
             }}
               onMouseEnter={e => (e.currentTarget.style.background = '#e6f7ff')}
               onMouseLeave={e => (e.currentTarget.style.background = '#fafafa')}
-              onClick={() => { handleLinkDoc(d.id); setDocModal(false) }}
-            >
+              onClick={() => { handleLinkDoc(d.id); setDocModal(false) }}>
               <span style={{ fontWeight: 500 }}>{d.title}</span>
               {d.creator && <span style={{ marginLeft: 8, color: '#999', fontSize: 12 }}>by {d.creator}</span>}
             </div>

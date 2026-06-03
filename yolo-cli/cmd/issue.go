@@ -1,9 +1,11 @@
 ﻿package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"strings"
+	"time"
+
+	"yolo-team/yolo-cli/internal/handler"
+	"yolo-team/yolo-cli/internal/model"
 
 	"github.com/spf13/cobra"
 )
@@ -19,55 +21,51 @@ var (
 
 var issueListCmd = &cobra.Command{
 	Use: "list", Short: "List issues",
-	Run: func(cmd *cobra.Command, args []string) {
-		path := "/issues?"
+	RunE: func(cmd *cobra.Command, args []string) error {
+		h := handler.NewIssueHandler()
+		req := handler.ListIssueReq{}
 		if issueListProject > 0 {
-			path += fmt.Sprintf("project_id=%d&", issueListProject)
+			v := int64(issueListProject)
+			req.ProjectID = &v
 		}
-
 		if issueListStatus != "" {
-			path += fmt.Sprintf("status=%s&", issueListStatus)
+			req.Status = &issueListStatus
 		}
-
 		if issueListExecutor > 0 {
-			path += fmt.Sprintf("executor_id=%d&", issueListExecutor)
+			v := int64(issueListExecutor)
+			req.ExecutorID = &v
 		}
-
 		if cmd.Flags().Changed("parent") {
-			path += fmt.Sprintf("parent_id=%d&", issueListParent)
+			v := int64(issueListParent)
+			req.ParentID = &v
 		}
 
-		var resp apiResponse
-		must(apiGet(strings.TrimRight(path, "&"), &resp))
+		issues, err := h.List(ctx, req)
+		if err != nil {
+			return err
+		}
 		if useJSON {
-			printJSON(resp)
-			return
+			printJSON(map[string]interface{}{"data": issues})
+			return nil
 		}
 
-		var issues []map[string]interface{}
-		json.Unmarshal(resp.Data, &issues)
-		fmt.Printf("%-18s %-16s %-8s %-20s %-12s %-30s\n", "KEY", "STATUS", "PRIORITY", "TITLE", "DEADLINE", "REPO")
+		fmt.Printf("%-18s %-14s %-8s %-24s %-12s %s\n", "KEY", "STATUS", "PRIORITY", "TITLE", "DEADLINE", "REPO")
 		for _, iss := range issues {
 			deadline := "-"
-			if d, ok := iss["deadline"]; ok && d != nil {
-				deadline = fmt.Sprintf("%v", d)
-				if len(deadline) > 10 {
-					deadline = deadline[:10]
-				}
+			if iss.Deadline != nil {
+				deadline = iss.Deadline.Format("2006-01-02")
 			}
-
 			repo := "-"
-			if rn, ok := iss["repo_name"]; ok && rn != nil && rn != "" {
-				repo = fmt.Sprintf("%v", rn)
-				if br, ok := iss["branch_name"]; ok && br != nil && br != "" {
-					repo += fmt.Sprintf(" (%v)", br)
+			if iss.RepoName != "" {
+				repo = iss.RepoName
+				if iss.BranchName != "" {
+					repo += fmt.Sprintf(" (%s)", iss.BranchName)
 				}
 			}
-
-			fmt.Printf("%-18s %-16s %-8s %-20s %-12s %-30s\n",
-				iss["key"], iss["status"], iss["priority"], truncate(fmt.Sprintf("%v", iss["title"]), 20), deadline, truncate(repo, 30))
+			fmt.Printf("%-18s %-14s %-8s %-24s %-12s %s\n",
+				iss.Key, iss.Status, iss.Priority, trunc(iss.Title, 24), deadline, trunc(repo, 30))
 		}
-
+		return nil
 	},
 }
 
@@ -87,66 +85,69 @@ var issueCreateCmd = &cobra.Command{
 		if issueCreateTitle == "" || issueCreateProject == 0 {
 			return fmt.Errorf("title (-t) and project (-p) are required")
 		}
-
-		body := map[string]interface{}{
-			"project_id": issueCreateProject,
-			"title":      issueCreateTitle,
+		h := handler.NewIssueHandler()
+		req := handler.CreateIssueReq{
+			ProjectID:   int64(issueCreateProject),
+			Title:       issueCreateTitle,
+			Description: issueCreateDesc,
+			Priority:    issueCreatePri,
+			Deadline:    issueCreateDeadline,
 		}
-
-		if issueCreateDesc != "" {
-			body["description"] = issueCreateDesc
-		}
-
-		if issueCreatePri != "" {
-			body["priority"] = issueCreatePri
-		}
-
 		if issueCreateParent > 0 {
-			body["parent_id"] = issueCreateParent
+			v := int64(issueCreateParent)
+			req.ParentID = &v
 		}
-
 		if issueCreateExec > 0 {
-			body["executor_id"] = issueCreateExec
+			v := int64(issueCreateExec)
+			req.ExecutorID = &v
 		}
 
-		if issueCreateDeadline != "" {
-			body["deadline"] = issueCreateDeadline
+		iss, err := h.Create(ctx, req)
+		if err != nil {
+			return err
 		}
-
-		var resp apiResponse
-		must(apiPost("/issues", body, &resp))
-		var iss map[string]interface{}
-		json.Unmarshal(resp.Data, &iss)
-		fmt.Printf("Issue created: %v (%v)\n", iss["key"], iss["title"])
+		if useJSON {
+			printJSON(map[string]interface{}{"data": iss})
+			return nil
+		}
+		fmt.Printf("Issue created: %s (%s)\n", iss.Key, iss.Title)
 		return nil
 	},
 }
 
 var issueInfoCmd = &cobra.Command{
 	Use: "info <key>", Short: "Show issue details", Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		var resp apiResponse
-		must(apiGet("/issues/"+args[0], &resp))
+	RunE: func(cmd *cobra.Command, args []string) error {
+		h := handler.NewIssueHandler()
+		iss, err := h.Get(ctx, handler.GetIssueReq{Key: args[0]})
+		if err != nil {
+			return err
+		}
 		if useJSON {
-			printJSON(resp)
-			return
+			printJSON(map[string]interface{}{"data": iss})
+			return nil
 		}
 
-		var iss map[string]interface{}
-		json.Unmarshal(resp.Data, &iss)
-		for _, k := range []string{"key", "status", "title", "description", "priority", "deadline"} {
-			fmt.Printf("%-12s %v\n", k+":", iss[k])
+		fmt.Printf("%-12s %s\n", "Key:", iss.Key)
+		fmt.Printf("%-12s %s\n", "Status:", iss.Status)
+		fmt.Printf("%-12s %s\n", "Title:", iss.Title)
+		fmt.Printf("%-12s %s\n", "Priority:", iss.Priority)
+		fmt.Printf("%-12s %s\n", "Description:", iss.Description)
+		if iss.Deadline != nil {
+			fmt.Printf("%-12s %s\n", "Deadline:", iss.Deadline.Format("2006-01-02"))
 		}
-
+		if iss.ExecutorID != nil && iss.Executor != nil {
+			fmt.Printf("%-12s %s (%s)\n", "Executor:", iss.Executor.Name, iss.Executor.Role)
+		}
 		repo := "-"
-		if rn, ok := iss["repo_name"]; ok && rn != nil && rn != "" {
-			repo = fmt.Sprintf("%v", rn)
-			if br, ok := iss["branch_name"]; ok && br != nil && br != "" {
-				repo += fmt.Sprintf(" (%v)", br)
+		if iss.RepoName != "" {
+			repo = iss.RepoName
+			if iss.BranchName != "" {
+				repo += fmt.Sprintf(" (%s)", iss.BranchName)
 			}
 		}
-
 		fmt.Printf("%-12s %s\n", "Repo:", repo)
+		return nil
 	},
 }
 
@@ -162,47 +163,53 @@ var (
 
 var issueUpdateCmd = &cobra.Command{
 	Use: "update <key>", Short: "Update an issue", Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		body := map[string]interface{}{}
+	RunE: func(cmd *cobra.Command, args []string) error {
+		h := handler.NewIssueHandler()
+		body := model.UpdateIssueRequest{}
 		if cmd.Flags().Changed("status") {
-			body["status"] = issueUpdateStatus
+			body.Status = &issueUpdateStatus
 		}
-
 		if cmd.Flags().Changed("title") {
-			body["title"] = issueUpdateTitle
+			body.Title = &issueUpdateTitle
 		}
-
 		if cmd.Flags().Changed("executor") {
-			body["executor_id"] = issueUpdateExec
+			body.ExecutorID = &issueUpdateExec
 		}
-
 		if cmd.Flags().Changed("deadline") {
-			body["deadline"] = issueUpdateDeadline
+			t, err := time.Parse("2006-01-02", issueUpdateDeadline)
+			if err == nil {
+				body.Deadline = &t
+			}
 		}
-
 		if cmd.Flags().Changed("repo-url") {
-			body["repo_url"] = issueUpdateRepoURL
+			body.RepoURL = &issueUpdateRepoURL
 		}
-
 		if cmd.Flags().Changed("repo-name") {
-			body["repo_name"] = issueUpdateRepoName
+			body.RepoName = &issueUpdateRepoName
 		}
-
 		if cmd.Flags().Changed("branch") {
-			body["branch_name"] = issueUpdateBranch
+			body.BranchName = &issueUpdateBranch
 		}
 
-		var resp apiResponse
-		must(apiPut("/issues/"+args[0], body, &resp))
+		_, err := h.Update(ctx, handler.UpdateIssueReq{Key: args[0], UpdateIssueRequest: body})
+		if err != nil {
+			return err
+		}
 		fmt.Printf("Issue updated: %s\n", args[0])
+		return nil
 	},
 }
 
 var issueDeleteCmd = &cobra.Command{
 	Use: "delete <key>", Short: "Delete an issue", Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		must(apiDelete("/issues/" + args[0]))
+	RunE: func(cmd *cobra.Command, args []string) error {
+		h := handler.NewIssueHandler()
+		_, err := h.Delete(ctx, handler.DeleteIssueReq{Key: args[0]})
+		if err != nil {
+			return err
+		}
 		fmt.Printf("Issue deleted: %s\n", args[0])
+		return nil
 	},
 }
 
@@ -213,50 +220,35 @@ var (
 
 var issueTodoCmd = &cobra.Command{
 	Use: "todo", Short: "Show todo list for an executor",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if todoExecutor == 0 {
-			fmt.Println("Error: executor (-e) is required")
-			return
+			return fmt.Errorf("executor (-e) is required")
 		}
-
 		limit := todoLimit
 		if limit <= 0 {
 			limit = 20
 		}
-
-		var resp apiResponse
-		must(apiGet(fmt.Sprintf("/issues/todo?executor_id=%d&limit=%d", todoExecutor, limit), &resp))
+		h := handler.NewIssueHandler()
+		issues, err := h.Todo(ctx, handler.TodoIssueReq{ExecutorID: int64(todoExecutor), Limit: limit})
+		if err != nil {
+			return err
+		}
 		if useJSON {
-			printJSON(resp)
-			return
+			printJSON(map[string]interface{}{"data": issues})
+			return nil
 		}
 
-		var issues []map[string]interface{}
-		json.Unmarshal(resp.Data, &issues)
-		fmt.Printf("%-18s %-16s %-8s %-20s %-12s\n", "KEY", "STATUS", "PRIORITY", "TITLE", "DEADLINE")
+		fmt.Printf("%-18s %-14s %-8s %-24s %-12s\n", "KEY", "STATUS", "PRIORITY", "TITLE", "DEADLINE")
 		for _, iss := range issues {
 			deadline := "-"
-			if d, ok := iss["deadline"]; ok && d != nil {
-				deadline = fmt.Sprintf("%v", d)
-				if len(deadline) > 10 {
-					deadline = deadline[:10]
-				}
+			if iss.Deadline != nil {
+				deadline = iss.Deadline.Format("2006-01-02")
 			}
-
-			fmt.Printf("%-18s %-16s %-8s %-20s %-12s\n",
-				iss["key"], iss["status"], iss["priority"], truncate(fmt.Sprintf("%v", iss["title"]), 20), deadline)
+			fmt.Printf("%-18s %-14s %-8s %-24s %-12s\n",
+				iss.Key, iss.Status, iss.Priority, trunc(iss.Title, 24), deadline)
 		}
-
+		return nil
 	},
-}
-
-func truncate(s string, n int) string {
-	runes := []rune(s)
-	if len(runes) > n {
-		return string(runes[:n-2]) + ".."
-	}
-
-	return s
 }
 
 func init() {

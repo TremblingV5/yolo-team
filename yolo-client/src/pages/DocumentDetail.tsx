@@ -83,7 +83,7 @@ export default function DocumentDetail() {
     <div style={{ padding: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ flex: 1 }}>
-          {(isNew || editing) ? (
+          {isNew ? (
             <Input
               size="large"
               value={title}

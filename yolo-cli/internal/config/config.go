@@ -7,28 +7,23 @@ import (
 	"path/filepath"
 )
 
+var DefaultDir string
+
+func init() {
+	home, _ := os.UserHomeDir()
+	DefaultDir = filepath.Join(home, ".yolo-team")
+}
+
 type Settings struct {
 	Workspace string `json:"workspace"`
 }
 
-type DBConfig struct {
-	Dialect string `json:"dialect"`
-	DSN     string `json:"dsn"`
-}
-
-type Config struct {
-	ServerPort int
-	Settings   *Settings
-	DB         *DBConfig
-}
-
-func settingsPath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".yolo-team", "settings.json")
+func SettingsPath() string {
+	return filepath.Join(DefaultDir, "settings.json")
 }
 
 func LoadSettings() (*Settings, error) {
-	data, err := os.ReadFile(settingsPath())
+	data, err := os.ReadFile(SettingsPath())
 	if err != nil {
 		return nil, err
 	}
@@ -42,12 +37,13 @@ func LoadSettings() (*Settings, error) {
 }
 
 func SaveSettings(s *Settings) error {
+	os.MkdirAll(DefaultDir, 0755)
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(settingsPath(), data, 0644)
+	return os.WriteFile(SettingsPath(), data, 0644)
 }
 
 func DBPath(workspace string) string {

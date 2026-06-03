@@ -36,3 +36,6 @@ yolo-client/src/generated.tsx
 Thumbs.db
 
 documents/
+
+# Test workspace
+yolo-cli-test-workspace/
