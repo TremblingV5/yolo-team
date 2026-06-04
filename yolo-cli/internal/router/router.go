@@ -34,7 +34,7 @@ func Setup(workspace string) *gin.Engine {
 			executors.GET("", handler.Wrap(executorH.List))
 			executors.POST("", handler.Wrap(executorH.Create))
 			executors.PUT("/:name", handler.Wrap(executorH.Update))
-			executors.DELETE("/:name", handler.Wrap(executorH.Delete))
+			executors.POST("/:name/delete", handler.Wrap(executorH.Delete))
 		}
 
 		issueH := handler.NewIssueHandler()
@@ -57,8 +57,14 @@ func Setup(workspace string) *gin.Engine {
 		{
 			documents.GET("/:key", handler.Wrap(docH.Get))
 			documents.PUT("/:key", handler.Wrap(docH.Update))
-			documents.DELETE("/:key", handler.Wrap(docH.Delete))
+			documents.POST("/:key/delete", handler.Wrap(docH.Delete))
 		}
+
+		// Task routes under issues
+		issues.POST("/:key/tasks", handler.Wrap(issueH.CreateTask))
+		issues.GET("/:key/tasks", handler.Wrap(issueH.ListTasks))
+		issues.PUT("/:key/tasks/:task_key", handler.Wrap(issueH.UpdateTask))
+		issues.POST("/:key/tasks/:task_key/delete", handler.Wrap(issueH.DeleteTask))
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))

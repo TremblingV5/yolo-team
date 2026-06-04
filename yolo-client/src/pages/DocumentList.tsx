@@ -2,7 +2,7 @@ import { PlusOutlined } from '@ant-design/icons'
 import { Button, Form, Input, message, Modal, Popconfirm, Table } from 'antd'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useListDocuments } from '../generated'
+import { useCreateDocument, useListDocuments } from '../generated'
 
 export default function DocumentList() {
   const { key } = useParams<{ key: string }>()
@@ -16,37 +16,33 @@ export default function DocumentList() {
     !search || d.title?.toLowerCase().includes(search.toLowerCase()) || d.key?.toLowerCase().includes(search.toLowerCase())
   )
 
+  const { mutate: createMutate } = useCreateDocument({ key: key || '' })
+  const { mutate: deleteMutate } = useDeleteDocument({ key: '' })
+
   const handleCreate = async () => {
     if (!newTitle) return
     try {
-      const resp = await fetch(`/api/v1/projects/${key}/documents`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTitle, content: '', creator: '人类' }),
-      })
-      const json = await resp.json()
-      if (json.code === 0) {
+      const result = await createMutate({ title: newTitle, content: '', creator: '人类' } as any)
+      const docKey = (result as any)?.data?.key
+      if (docKey) {
         message.success('创建成功')
         setNewTitle('')
         setCreateOpen(false)
-        const docKey = json.data.key
         navigate(`/doc/${docKey}`)
       } else {
-        message.error(json.message || '创建失败')
+        message.success('创建成功')
+        setNewTitle('')
+        setCreateOpen(false)
+        refetch()
       }
     } catch (e: any) { message.error(e.message) }
   }
 
   const handleDelete = async (docKey: string) => {
     try {
-      const resp = await fetch(`/api/v1/documents/${docKey}`, { method: 'DELETE' })
-      const json = await resp.json()
-      if (json.code === 0) {
-        message.success('已删除')
-        refetch()
-      } else {
-        message.error(json.message || '删除失败')
-      }
+      await deleteMutate(undefined, { pathParams: { key: docKey } })
+      message.success('已删除')
+      refetch()
     } catch (e: any) { message.error(e.message) }
   }
 

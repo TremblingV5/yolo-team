@@ -4,6 +4,8 @@ definitions:
     properties:
       content:
         type: string
+      creator:
+        type: string
       projectKey:
         type: string
       title:
@@ -24,8 +26,6 @@ definitions:
         type: string
       executor_id:
         type: integer
-      parent_id:
-        type: integer
       priority:
         type: string
       project_id:
@@ -40,11 +40,22 @@ definitions:
       name:
         type: string
     type: object
+  internal_handler.CreateTaskReq:
+    properties:
+      description:
+        type: string
+      issueKey:
+        type: string
+      title:
+        type: string
+    type: object
   internal_handler.DocumentResponse:
     properties:
       content:
         type: string
       created_at:
+        type: string
+      creator:
         type: string
       file_path:
         type: string
@@ -95,6 +106,17 @@ definitions:
       name:
         type: string
     type: object
+  internal_handler.UpdateTaskReq:
+    properties:
+      description:
+        type: string
+      status:
+        type: string
+      taskKey:
+        type: string
+      title:
+        type: string
+    type: object
   yolo-team_yolo-cli_internal_common.Response:
     properties:
       code:
@@ -106,6 +128,8 @@ definitions:
   yolo-team_yolo-cli_internal_model.Document:
     properties:
       created_at:
+        type: string
+      creator:
         type: string
       id:
         type: integer
@@ -139,10 +163,6 @@ definitions:
     properties:
       branch_name:
         type: string
-      children:
-        items:
-          $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Issue'
-        type: array
       created_at:
         type: string
       deadline:
@@ -153,14 +173,14 @@ definitions:
         items:
           $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Document'
         type: array
+      executor:
+        $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Executor'
       executor_id:
         type: integer
       id:
         type: integer
       key:
         type: string
-      parent_id:
-        type: integer
       priority:
         type: string
       project_id:
@@ -189,6 +209,27 @@ definitions:
       key:
         type: string
       name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  yolo-team_yolo-cli_internal_model.Task:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      issue_id:
+        type: integer
+      key:
+        type: string
+      sort_order:
+        type: integer
+      status:
+        type: string
+      title:
         type: string
       updated_at:
         type: string
@@ -222,29 +263,6 @@ info:
   version: "1.0"
 paths:
   /api/v1/documents/{key}:
-    delete:
-      description: Delete a document by key
-      operationId: DeleteDocument
-      parameters:
-      - description: Document key
-        in: path
-        name: key
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
-      summary: Delete a document
-      tags:
-      - Documents
     get:
       description: Get document details by key
       operationId: GetDocument
@@ -313,6 +331,30 @@ paths:
       summary: Update a document
       tags:
       - Documents
+  /api/v1/documents/{key}/delete:
+    post:
+      description: Delete a document by key
+      operationId: DeleteDocument
+      parameters:
+      - description: Document key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Delete a document
+      tags:
+      - Documents
   /api/v1/executors:
     get:
       description: Get a list of all executors
@@ -374,29 +416,6 @@ paths:
       tags:
       - Executors
   /api/v1/executors/{name}:
-    delete:
-      description: Delete an executor by name
-      operationId: DeleteExecutor
-      parameters:
-      - description: Executor name
-        in: path
-        name: name
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
-      summary: Delete an executor
-      tags:
-      - Executors
     put:
       consumes:
       - application/json
@@ -437,6 +456,30 @@ paths:
       summary: Update an executor
       tags:
       - Executors
+  /api/v1/executors/{name}/delete:
+    post:
+      description: Delete an executor by name
+      operationId: DeleteExecutor
+      parameters:
+      - description: Executor name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Delete an executor
+      tags:
+      - Executors
   /api/v1/issues:
     get:
       description: List issues with optional filters
@@ -450,10 +493,6 @@ paths:
         in: query
         name: status
         type: string
-      - description: Filter by parent ID
-        in: query
-        name: parent_id
-        type: integer
       - description: Filter by executor ID
         in: query
         name: executor_id
@@ -512,7 +551,7 @@ paths:
       - Issues
   /api/v1/issues/{key}:
     delete:
-      description: Delete an issue by key (cascade deletes children)
+      description: Delete an issue by key
       operationId: DeleteIssue
       parameters:
       - description: Issue key
@@ -535,7 +574,7 @@ paths:
       tags:
       - Issues
     get:
-      description: Get issue details by key
+      description: Get issue details by key, including tasks
       operationId: GetIssue
       parameters:
       - description: Issue key
@@ -662,6 +701,152 @@ paths:
       summary: Link document to issue
       tags:
       - Issues
+  /api/v1/issues/{key}/tasks:
+    get:
+      description: List all tasks belonging to an issue
+      operationId: ListTasks
+      parameters:
+      - description: Issue key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Task'
+                  type: array
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: List tasks for an issue
+      tags:
+      - Tasks
+    post:
+      consumes:
+      - application/json
+      description: Create a new task under an issue
+      operationId: CreateTask
+      parameters:
+      - description: Issue key
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Task info
+        in: body
+        name: task
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.CreateTaskReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Task'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Create a task for an issue
+      tags:
+      - Tasks
+  /api/v1/issues/{key}/tasks/{task_key}:
+    put:
+      consumes:
+      - application/json
+      description: Update task fields or status
+      operationId: UpdateTask
+      parameters:
+      - description: Issue key
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Task key
+        in: path
+        name: task_key
+        required: true
+        type: string
+      - description: Task update info
+        in: body
+        name: task
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.UpdateTaskReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/yolo-team_yolo-cli_internal_model.Task'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Update a task
+      tags:
+      - Tasks
+  /api/v1/issues/{key}/tasks/{task_key}/delete:
+    post:
+      description: Delete a task by ID
+      operationId: DeleteTask
+      parameters:
+      - description: Issue key
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: Task key
+        in: path
+        name: task_key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Delete a task
+      tags:
+      - Tasks
   /api/v1/issues/todo:
     get:
       description: Get todo list for an executor

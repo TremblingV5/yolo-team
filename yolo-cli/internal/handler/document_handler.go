@@ -202,7 +202,7 @@ func (h *DocumentHandler) Update(ctx context.Context, req UpdateDocReq) (Documen
 //	@Param			key	path		string	true	"Document key"
 //	@Success		200	{object}	common.Response
 //	@Failure		404	{object}	common.Response
-//	@Router			/api/v1/documents/{key} [delete]
+//	@Router			/api/v1/documents/{key}/delete [post]
 func (h *DocumentHandler) Delete(ctx context.Context, req DeleteDocReq) (struct{}, error) {
 	doc, err := h.repo.GetByKey(req.Key)
 	if err != nil {

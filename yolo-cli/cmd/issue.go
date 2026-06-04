@@ -1,4 +1,4 @@
-﻿package cmd
+package cmd
 
 import (
 	"fmt"
@@ -16,7 +16,6 @@ var (
 	issueListProject  int
 	issueListStatus   string
 	issueListExecutor int
-	issueListParent   int
 )
 
 var issueListCmd = &cobra.Command{
@@ -34,10 +33,6 @@ var issueListCmd = &cobra.Command{
 		if issueListExecutor > 0 {
 			v := int64(issueListExecutor)
 			req.ExecutorID = &v
-		}
-		if cmd.Flags().Changed("parent") {
-			v := int64(issueListParent)
-			req.ParentID = &v
 		}
 
 		issues, err := h.List(ctx, req)
@@ -74,7 +69,6 @@ var (
 	issueCreateProject  int
 	issueCreateDesc     string
 	issueCreatePri      string
-	issueCreateParent   int
 	issueCreateExec     int
 	issueCreateDeadline string
 )
@@ -92,10 +86,6 @@ var issueCreateCmd = &cobra.Command{
 			Description: issueCreateDesc,
 			Priority:    issueCreatePri,
 			Deadline:    issueCreateDeadline,
-		}
-		if issueCreateParent > 0 {
-			v := int64(issueCreateParent)
-			req.ParentID = &v
 		}
 		if issueCreateExec > 0 {
 			v := int64(issueCreateExec)
@@ -258,13 +248,11 @@ func init() {
 	issueListCmd.Flags().IntVarP(&issueListProject, "project", "p", 0, "filter by project ID")
 	issueListCmd.Flags().StringVarP(&issueListStatus, "status", "s", "", "filter by status")
 	issueListCmd.Flags().IntVarP(&issueListExecutor, "executor", "e", 0, "filter by executor ID")
-	issueListCmd.Flags().IntVar(&issueListParent, "parent", -1, "filter by parent (0 for top-level)")
 
 	issueCreateCmd.Flags().StringVarP(&issueCreateTitle, "title", "t", "", "issue title")
 	issueCreateCmd.Flags().IntVarP(&issueCreateProject, "project", "p", 0, "project ID")
 	issueCreateCmd.Flags().StringVarP(&issueCreateDesc, "description", "d", "", "description")
 	issueCreateCmd.Flags().StringVar(&issueCreatePri, "priority", "", "priority")
-	issueCreateCmd.Flags().IntVar(&issueCreateParent, "parent", 0, "parent issue ID")
 	issueCreateCmd.Flags().IntVar(&issueCreateExec, "executor", 0, "executor ID")
 	issueCreateCmd.Flags().StringVar(&issueCreateDeadline, "deadline", "", "deadline (YYYY-MM-DD)")
 

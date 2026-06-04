@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 
 	"gorm.io/gorm"
 
@@ -21,9 +20,7 @@ func NewIssueRepo() *IssueRepo {
 type IssueFilter struct {
 	ProjectID  *int64
 	Status     *string
-	ParentID   *int64
 	ExecutorID *int64
-	OnlyTop    bool
 }
 
 func (r *IssueRepo) List(filter IssueFilter) ([]model.Issue, error) {
@@ -36,40 +33,13 @@ func (r *IssueRepo) List(filter IssueFilter) ([]model.Issue, error) {
 		q = q.Where("status = ?", *filter.Status)
 	}
 
-	if filter.ParentID != nil {
-		q = q.Where("parent_id = ?", *filter.ParentID)
-	}
-
 	if filter.ExecutorID != nil {
 		q = q.Where("executor_id = ?", *filter.ExecutorID)
-	}
-
-	if filter.OnlyTop {
-		q = q.Where("parent_id IS NULL")
 	}
 
 	var issues []model.Issue
 	err := q.Order("sort_order ASC, created_at DESC").Find(&issues).Error
 	return issues, err
-}
-
-func (r *IssueRepo) GetWithChildren(key string) (*model.Issue, error) {
-	issue, err := r.GetByKey(key)
-	if err != nil {
-		return nil, err
-	}
-
-	children, err := db.G[model.Issue]().
-		Where(query.Issue.ParentID.Eq(issue.ID)).
-		Order(query.Issue.SortOrder.Asc()).
-		Order(query.Issue.CreatedAt.Desc()).
-		Find(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	issue.Children = children
-	return issue, nil
 }
 
 func (r *IssueRepo) Create(issue *model.Issue) error {
@@ -121,14 +91,6 @@ func (r *IssueRepo) Delete(key string) error {
 		return err
 	}
 
-	if issue.ParentID == nil {
-		if _, err := db.G[model.Issue]().
-			Where(query.Issue.ParentID.Eq(issue.ID)).
-			Delete(context.Background()); err != nil {
-			return fmt.Errorf("delete children: %w", err)
-		}
-	}
-
 	_, err = db.G[model.Issue]().
 		Where(query.Issue.ID.Eq(issue.ID)).
 		Delete(context.Background())
@@ -146,36 +108,13 @@ func (r *IssueRepo) GetTodo(executorID int64, limit int) ([]model.Issue, error) 
 	return issues, err
 }
 
-func (r *IssueRepo) GetChildren(parentID int64) ([]model.Issue, error) {
-	issues, err := db.G[model.Issue]().
-		Where(query.Issue.ParentID.Eq(parentID)).
-		Order(query.Issue.SortOrder.Asc()).
-		Order(query.Issue.CreatedAt.Asc()).
-		Find(context.Background())
-	return issues, err
-}
-
 func (r *IssueRepo) TopIssuesByProject(projectID int64) ([]model.Issue, error) {
 	issues, err := db.G[model.Issue]().
 		Where(query.Issue.ProjectID.Eq(projectID)).
-		Where(query.Issue.ParentID.IsNull()).
 		Order(query.Issue.SortOrder.Asc()).
 		Order(query.Issue.CreatedAt.Desc()).
 		Find(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	for i := range issues {
-		children, err := r.GetChildren(issues[i].ID)
-		if err != nil {
-			return nil, err
-		}
-
-		issues[i].Children = children
-	}
-
-	return issues, nil
+	return issues, err
 }
 
 func (r *IssueRepo) LinkDocument(issueID int64, documentID int64) error {

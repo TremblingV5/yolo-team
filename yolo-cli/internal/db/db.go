@@ -29,6 +29,7 @@ func Init(workspace string) error {
 		&model.Executor{},
 		&model.Issue{},
 		&model.Document{},
+		&model.Task{},
 	); err != nil {
 		return fmt.Errorf("failed to migrate: %w", err)
 	}

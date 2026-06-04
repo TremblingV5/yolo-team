@@ -13,6 +13,7 @@ var Document = struct {
 	Key       field.String
 	ProjectID field.Number[int64]
 	Title     field.String
+	Creator   field.String
 	SortOrder field.Number[int]
 	CreatedAt field.Time
 	UpdatedAt field.Time
@@ -22,6 +23,7 @@ var Document = struct {
 	Key:       field.String{}.WithColumn("key"),
 	ProjectID: field.Number[int64]{}.WithColumn("project_id"),
 	Title:     field.String{}.WithColumn("title"),
+	Creator:   field.String{}.WithColumn("creator"),
 	SortOrder: field.Number[int]{}.WithColumn("sort_order"),
 	CreatedAt: field.Time{}.WithColumn("created_at"),
 	UpdatedAt: field.Time{}.WithColumn("updated_at"),

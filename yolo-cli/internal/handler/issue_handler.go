@@ -13,6 +13,7 @@ type IssueHandler struct {
 	repo     *repository.IssueRepo
 	execRepo *repository.ExecutorRepo
 	docRepo  *repository.DocumentRepo
+	taskRepo *repository.TaskRepo
 }
 
 func NewIssueHandler() *IssueHandler {
@@ -20,13 +21,13 @@ func NewIssueHandler() *IssueHandler {
 		repo:     repository.NewIssueRepo(),
 		execRepo: repository.NewExecutorRepo(),
 		docRepo:  repository.NewDocumentRepo(),
+		taskRepo: repository.NewTaskRepo(),
 	}
 }
 
 type ListIssueReq struct {
 	ProjectID  *int64  `form:"project_id"`
 	Status     *string `form:"status"`
-	ParentID   *int64  `form:"parent_id"`
 	ExecutorID *int64  `form:"executor_id"`
 }
 
@@ -35,7 +36,6 @@ type CreateIssueReq struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Priority    string `json:"priority"`
-	ParentID    *int64 `json:"parent_id"`
 	ExecutorID  *int64 `json:"executor_id"`
 	Deadline    string `json:"deadline"`
 }
@@ -68,6 +68,28 @@ type UnlinkDocReq struct {
 	DocumentID int64  `form:"document_id"`
 }
 
+// Task request/response types
+type ListTaskReq struct {
+	IssueKey string `uri:"key"`
+}
+
+type CreateTaskReq struct {
+	IssueKey    string `uri:"key"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+type UpdateTaskReq struct {
+	TaskKey     string  `uri:"task_key"`
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+	Status      *string `json:"status"`
+}
+
+type DeleteTaskReq struct {
+	TaskKey string `uri:"task_key"`
+}
+
 // ListIssues godoc
 //
 //	@Id				ListIssues
@@ -77,24 +99,15 @@ type UnlinkDocReq struct {
 //	@Produce		json
 //	@Param			project_id	query		int		false	"Filter by project ID"
 //	@Param			status		query		string	false	"Filter by status"
-//	@Param			parent_id	query		int		false	"Filter by parent ID"
 //	@Param			executor_id	query		int		false	"Filter by executor ID"
 //	@Success		200			{object}	common.Response{data=[]model.Issue}
 //	@Failure		500			{object}	common.Response
 //	@Router			/api/v1/issues [get]
 func (h *IssueHandler) List(ctx context.Context, req ListIssueReq) ([]model.Issue, error) {
-	filter := repository.IssueFilter{OnlyTop: true}
+	filter := repository.IssueFilter{}
 	filter.ProjectID = req.ProjectID
 	filter.Status = req.Status
 	filter.ExecutorID = req.ExecutorID
-	if req.ParentID != nil {
-		if *req.ParentID == 0 {
-			filter.OnlyTop = true
-		} else {
-			filter.ParentID = req.ParentID
-			filter.OnlyTop = false
-		}
-	}
 
 	return h.repo.List(filter)
 }
@@ -114,7 +127,6 @@ func (h *IssueHandler) List(ctx context.Context, req ListIssueReq) ([]model.Issu
 func (h *IssueHandler) Create(ctx context.Context, req CreateIssueReq) (*model.Issue, error) {
 	issue := model.NewIssue(req.ProjectID, req.Title)
 	issue.Description = req.Description
-	issue.ParentID = req.ParentID
 	issue.ExecutorID = req.ExecutorID
 	if req.Priority != "" {
 		issue.Priority = req.Priority
@@ -131,13 +143,6 @@ func (h *IssueHandler) Create(ctx context.Context, req CreateIssueReq) (*model.I
 		return nil, common.NewAppError(40001, err.Error())
 	}
 
-	if issue.ParentID != nil {
-		parent, err := h.repo.GetByID(*issue.ParentID)
-		if err != nil || !parent.CanBeParent() {
-			return nil, common.NewAppError(40003, "invalid parent issue")
-		}
-	}
-
 	if err := h.repo.Create(issue); err != nil {
 		return nil, common.NewAppError(40001, err.Error())
 	}
@@ -149,7 +154,7 @@ func (h *IssueHandler) Create(ctx context.Context, req CreateIssueReq) (*model.I
 //
 //	@Id				GetIssue
 //	@Summary		Get an issue
-//	@Description	Get issue details by key
+//	@Description	Get issue details by key, including tasks
 //	@Tags			Issues
 //	@Produce		json
 //	@Param			key	path		string	true	"Issue key"
@@ -157,7 +162,7 @@ func (h *IssueHandler) Create(ctx context.Context, req CreateIssueReq) (*model.I
 //	@Failure		404	{object}	common.Response
 //	@Router			/api/v1/issues/{key} [get]
 func (h *IssueHandler) Get(ctx context.Context, req GetIssueReq) (*model.Issue, error) {
-	issue, err := h.repo.GetWithChildren(req.Key)
+	issue, err := h.repo.GetByKey(req.Key)
 	if err != nil {
 		return nil, common.NewAppError(40401, "issue not found")
 	}
@@ -190,18 +195,31 @@ func (h *IssueHandler) Update(ctx context.Context, req UpdateIssueReq) (*model.I
 		return nil, common.NewAppError(40001, err.Error())
 	}
 
+	// Prevent moving to done if any task is not completed
+	if issue.Status == model.StatusDone {
+		tasks, err := h.taskRepo.ListByIssue(issue.ID)
+		if err != nil {
+			return nil, common.NewAppError(50001, err.Error())
+		}
+		for _, t := range tasks {
+			if t.Status != model.TaskStatusDone {
+				return nil, common.NewAppError(40001, "all tasks must be completed before closing the issue")
+			}
+		}
+	}
+
 	if err := h.repo.Save(issue); err != nil {
 		return nil, common.NewAppError(40001, err.Error())
 	}
 
-	return h.repo.GetWithChildren(req.Key)
+	return h.repo.GetByKey(req.Key)
 }
 
 // DeleteIssue godoc
 //
 //	@Id				DeleteIssue
 //	@Summary		Delete an issue
-//	@Description	Delete an issue by key (cascade deletes children)
+//	@Description	Delete an issue by key
 //	@Tags			Issues
 //	@Produce		json
 //	@Param			key	path		string	true	"Issue key"
@@ -286,6 +304,131 @@ func (h *IssueHandler) UnlinkDocument(ctx context.Context, req UnlinkDocReq) (st
 	}
 
 	if err := h.repo.UnlinkDocument(issue.ID, req.DocumentID); err != nil {
+		return struct{}{}, common.NewAppError(40001, err.Error())
+	}
+
+	return struct{}{}, nil
+}
+
+// --- Task handlers ---
+
+// ListTasks godoc
+//
+//	@Id				ListTasks
+//	@Summary		List tasks for an issue
+//	@Description	List all tasks belonging to an issue
+//	@Tags			Tasks
+//	@Produce		json
+//	@Param			key	path		string	true	"Issue key"
+//	@Success		200	{object}	common.Response{data=[]model.Task}
+//	@Failure		404	{object}	common.Response
+//	@Router			/api/v1/issues/{key}/tasks [get]
+func (h *IssueHandler) ListTasks(ctx context.Context, req ListTaskReq) ([]model.Task, error) {
+	issue, err := h.repo.GetByKey(req.IssueKey)
+	if err != nil {
+		return nil, common.NewAppError(40401, "issue not found")
+	}
+
+	return h.taskRepo.ListByIssue(issue.ID)
+}
+
+// CreateTask godoc
+//
+//	@Id				CreateTask
+//	@Summary		Create a task for an issue
+//	@Description	Create a new task under an issue
+//	@Tags			Tasks
+//	@Accept			json
+//	@Produce		json
+//	@Param			key		path		string			true	"Issue key"
+//	@Param			task	body		CreateTaskReq	true	"Task info"
+//	@Success		200		{object}	common.Response{data=model.Task}
+//	@Failure		400		{object}	common.Response
+//	@Failure		404		{object}	common.Response
+//	@Router			/api/v1/issues/{key}/tasks [post]
+func (h *IssueHandler) CreateTask(ctx context.Context, req CreateTaskReq) (*model.Task, error) {
+	issue, err := h.repo.GetByKey(req.IssueKey)
+	if err != nil {
+		return nil, common.NewAppError(40401, "issue not found")
+	}
+
+	task := model.NewTask(issue.ID, req.Title)
+	task.Description = req.Description
+
+	if err := task.Validate(); err != nil {
+		return nil, common.NewAppError(40001, err.Error())
+	}
+
+	if err := h.taskRepo.Create(task); err != nil {
+		return nil, common.NewAppError(40001, err.Error())
+	}
+
+	return h.taskRepo.GetByKey(task.Key)
+}
+
+// UpdateTask godoc
+//
+//	@Id				UpdateTask
+//	@Summary		Update a task
+//	@Description	Update task fields or status
+//	@Tags			Tasks
+//	@Accept			json
+//	@Produce		json
+//	@Param			key		path		string			true	"Issue key"
+//	@Param			task_key	path		string			true	"Task key"
+//	@Param			task		body		UpdateTaskReq	true	"Task update info"
+//	@Success		200			{object}	common.Response{data=model.Task}
+//	@Failure		400			{object}	common.Response
+//	@Failure		404			{object}	common.Response
+//	@Router			/api/v1/issues/{key}/tasks/{task_key} [put]
+func (h *IssueHandler) UpdateTask(ctx context.Context, req UpdateTaskReq) (*model.Task, error) {
+	task, err := h.taskRepo.GetByKey(req.TaskKey)
+	if err != nil {
+		return nil, common.NewAppError(40401, "task not found")
+	}
+
+	if req.Title != nil {
+		task.Title = *req.Title
+	}
+
+	if req.Description != nil {
+		task.Description = *req.Description
+	}
+
+	if req.Status != nil {
+		task.Status = *req.Status
+	}
+
+	if err := task.Validate(); err != nil {
+		return nil, common.NewAppError(40001, err.Error())
+	}
+
+	if err := h.taskRepo.Update(task); err != nil {
+		return nil, common.NewAppError(40001, err.Error())
+	}
+
+	return h.taskRepo.GetByKey(task.Key)
+}
+
+// DeleteTask godoc
+//
+//	@Id				DeleteTask
+//	@Summary		Delete a task
+//	@Description	Delete a task by ID
+//	@Tags			Tasks
+//	@Produce		json
+//	@Param			key		path		string	true	"Issue key"
+//	@Param			task_key	path		string			true	"Task key"
+//	@Success		200			{object}	common.Response
+//	@Failure		404			{object}	common.Response
+//	@Router			/api/v1/issues/{key}/tasks/{task_key}/delete [post]
+func (h *IssueHandler) DeleteTask(ctx context.Context, req DeleteTaskReq) (struct{}, error) {
+	_, err := h.taskRepo.GetByKey(req.TaskKey)
+	if err != nil {
+		return struct{}{}, common.NewAppError(40401, "task not found")
+	}
+
+	if err := h.taskRepo.DeleteByKey(req.TaskKey); err != nil {
 		return struct{}{}, common.NewAppError(40001, err.Error())
 	}
 

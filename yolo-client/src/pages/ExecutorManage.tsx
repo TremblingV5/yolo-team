@@ -27,7 +27,8 @@ export default function ExecutorManage() {
   const executors = (data as any)?.data || []
 
   const { mutate: createMutate } = useCreateExecutor({})
-  const { mutate: deleteMutate } = useDeleteExecutor({})
+  const { mutate: updateMutate } = useUpdateExecutor({ name: '' })
+  const { mutate: deleteMutate } = useDeleteExecutor({ name: '' })
 
   const handleCreate = async () => {
     try {
@@ -42,7 +43,7 @@ export default function ExecutorManage() {
 
   const handleDelete = async (name: string) => {
     try {
-      await deleteMutate(name)
+      await deleteMutate(undefined, { pathParams: { name } })
       message.success('已删除')
       refetch()
     } catch (e: any) { message.error(e.message) }
@@ -58,19 +59,10 @@ export default function ExecutorManage() {
   const handleEditSave = async () => {
     if (!editExec) return
     try {
-      const resp = await fetch(`/api/v1/executors/${editExec.name}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: editRole, soul: editSoul }),
-      })
-      const json = await resp.json()
-      if (json.code === 0) {
-        message.success('已保存')
-        setEditOpen(false)
-        refetch()
-      } else {
-        message.error(json.message || '保存失败')
-      }
+      await updateMutate({ role: editRole, soul: editSoul }, { pathParams: { name: editExec.name || '' } })
+      message.success('已保存')
+      setEditOpen(false)
+      refetch()
     } catch (e: any) { message.error(e.message) }
   }
 

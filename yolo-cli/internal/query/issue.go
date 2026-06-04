@@ -12,7 +12,6 @@ var Issue = struct {
 	ID          field.Number[int64]
 	Key         field.String
 	ProjectID   field.Number[int64]
-	ParentID    field.Number[int64]
 	Status      field.String
 	Title       field.String
 	Description field.String
@@ -25,15 +24,13 @@ var Issue = struct {
 	SortOrder   field.Number[int]
 	CreatedAt   field.Time
 	UpdatedAt   field.Time
-	Children    field.Slice[model.Issue]
 	Project     field.Struct[model.Project]
-	Parent      field.Struct[model.Issue]
 	Executor    field.Struct[model.Executor]
+	Documents   field.Slice[model.Document]
 }{
 	ID:          field.Number[int64]{}.WithColumn("id"),
 	Key:         field.String{}.WithColumn("key"),
 	ProjectID:   field.Number[int64]{}.WithColumn("project_id"),
-	ParentID:    field.Number[int64]{}.WithColumn("parent_id"),
 	Status:      field.String{}.WithColumn("status"),
 	Title:       field.String{}.WithColumn("title"),
 	Description: field.String{}.WithColumn("description"),
@@ -46,10 +43,9 @@ var Issue = struct {
 	SortOrder:   field.Number[int]{}.WithColumn("sort_order"),
 	CreatedAt:   field.Time{}.WithColumn("created_at"),
 	UpdatedAt:   field.Time{}.WithColumn("updated_at"),
-	Children:    field.Slice[model.Issue]{}.WithName("Children"),
 	Project:     field.Struct[model.Project]{}.WithName("Project"),
-	Parent:      field.Struct[model.Issue]{}.WithName("Parent"),
 	Executor:    field.Struct[model.Executor]{}.WithName("Executor"),
+	Documents:   field.Slice[model.Document]{}.WithName("Documents"),
 }
 
 var UpdateIssueRequest = struct {

@@ -125,8 +125,10 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "delete": {
+            }
+        },
+        "/api/v1/documents/{key}/delete": {
+            "post": {
                 "description": "Delete a document by key",
                 "produces": [
                     "application/json"
@@ -324,8 +326,10 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "delete": {
+            }
+        },
+        "/api/v1/executors/{name}/delete": {
+            "post": {
                 "description": "Delete an executor by name",
                 "produces": [
                     "application/json"
@@ -382,12 +386,6 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Filter by status",
                         "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Filter by parent ID",
-                        "name": "parent_id",
                         "in": "query"
                     },
                     {
@@ -544,7 +542,7 @@ const docTemplate = `{
         },
         "/api/v1/issues/{key}": {
             "get": {
-                "description": "Get issue details by key",
+                "description": "Get issue details by key, including tasks",
                 "produces": [
                     "application/json"
                 ],
@@ -654,7 +652,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Delete an issue by key (cascade deletes children)",
+                "description": "Delete an issue by key",
                 "produces": [
                     "application/json"
                 ],
@@ -758,6 +756,237 @@ const docTemplate = `{
                         "description": "Document ID",
                         "name": "document_id",
                         "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/issues/{key}/tasks": {
+            "get": {
+                "description": "List all tasks belonging to an issue",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "List tasks for an issue",
+                "operationId": "ListTasks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Issue key",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/yolo-team_yolo-cli_internal_model.Task"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new task under an issue",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Create a task for an issue",
+                "operationId": "CreateTask",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Issue key",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Task info",
+                        "name": "task",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.CreateTaskReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_model.Task"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/issues/{key}/tasks/{task_key}": {
+            "put": {
+                "description": "Update task fields or status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Update a task",
+                "operationId": "UpdateTask",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Issue key",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task key",
+                        "name": "task_key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Task update info",
+                        "name": "task",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.UpdateTaskReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_model.Task"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/issues/{key}/tasks/{task_key}/delete": {
+            "post": {
+                "description": "Delete a task by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Delete a task",
+                "operationId": "DeleteTask",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Issue key",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task key",
+                        "name": "task_key",
+                        "in": "path",
                         "required": true
                     }
                 ],
@@ -1145,6 +1374,9 @@ const docTemplate = `{
                 "content": {
                     "type": "string"
                 },
+                "creator": {
+                    "type": "string"
+                },
                 "projectKey": {
                     "type": "string"
                 },
@@ -1176,9 +1408,6 @@ const docTemplate = `{
                 "executor_id": {
                     "type": "integer"
                 },
-                "parent_id": {
-                    "type": "integer"
-                },
                 "priority": {
                     "type": "string"
                 },
@@ -1201,6 +1430,20 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.CreateTaskReq": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "issueKey": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.DocumentResponse": {
             "type": "object",
             "properties": {
@@ -1208,6 +1451,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "created_at": {
+                    "type": "string"
+                },
+                "creator": {
                     "type": "string"
                 },
                 "file_path": {
@@ -1286,6 +1532,23 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.UpdateTaskReq": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "taskKey": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "yolo-team_yolo-cli_internal_common.Response": {
             "type": "object",
             "properties": {
@@ -1302,6 +1565,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "created_at": {
+                    "type": "string"
+                },
+                "creator": {
                     "type": "string"
                 },
                 "id": {
@@ -1353,12 +1619,6 @@ const docTemplate = `{
                 "branch_name": {
                     "type": "string"
                 },
-                "children": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/yolo-team_yolo-cli_internal_model.Issue"
-                    }
-                },
                 "created_at": {
                     "type": "string"
                 },
@@ -1374,6 +1634,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/yolo-team_yolo-cli_internal_model.Document"
                     }
                 },
+                "executor": {
+                    "$ref": "#/definitions/yolo-team_yolo-cli_internal_model.Executor"
+                },
                 "executor_id": {
                     "type": "integer"
                 },
@@ -1382,9 +1645,6 @@ const docTemplate = `{
                 },
                 "key": {
                     "type": "string"
-                },
-                "parent_id": {
-                    "type": "integer"
                 },
                 "priority": {
                     "type": "string"
@@ -1428,6 +1688,38 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "yolo-team_yolo-cli_internal_model.Task": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "issue_id": {
+                    "type": "integer"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
                     "type": "string"
                 },
                 "updated_at": {

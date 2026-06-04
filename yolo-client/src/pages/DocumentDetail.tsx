@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Button, Input, message } from 'antd'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import MDEditor from '@uiw/react-md-editor'
-import { useGetDocument, useUpdateDocument } from '../generated'
+import { useGetDocument, useUpdateDocument, useCreateDocument, useLinkDocument } from '../generated'
 
 export default function DocumentDetail() {
   const { key } = useParams<{ key: string }>()
@@ -20,6 +20,8 @@ export default function DocumentDetail() {
   const { data } = useGetDocument({ key: isNew ? '' : (key || '') })
   const doc = (data as any)?.data
   const { mutate: updateMutate } = useUpdateDocument({ key: isNew ? '' : (key || '') })
+  const { mutate: createDocMutate } = useCreateDocument({ key: projectKey || '' })
+  const { mutate: linkDocMutate } = useLinkDocument({ key: linkTo || '' })
 
   useEffect(() => {
     if (doc && !isNew) {
@@ -32,32 +34,24 @@ export default function DocumentDetail() {
     setSaving(true)
     try {
       let docKey = key
-      let newDoc: any = null
+      let newDocId: number | undefined
 
       if (isNew && projectKey) {
-        const resp = await fetch(`/api/v1/projects/${projectKey}/documents`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: title || '未命名文档', content, creator: '人类' }),
-        })
-        const json = await resp.json()
-        if (json.code !== 0) throw new Error(json.message || '创建失败')
-        docKey = json.data.key
-        newDoc = json.data
+        const result = await createDocMutate({ title: title || '未命名文档', content, creator: '人类' } as any)
+        docKey = (result as any)?.data?.key
+        newDocId = (result as any)?.data?.id
       } else if (!isNew) {
         await updateMutate({ content } as any)
       }
 
-      if (linkTo && docKey) {
-        const docId = newDoc ? newDoc.id : (doc?.id)
+      if (linkTo && docKey && docKey !== 'new') {
+        const docId = newDocId ?? doc?.id
         if (docId) {
-          await fetch(`/api/v1/issues/${linkTo}/documents`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ document_id: docId }),
-          })
+          await linkDocMutate({ document_id: docId } as any)
+          message.success('已保存并关联到 Issue')
+        } else {
+          message.success('已保存')
         }
-        message.success('已保存并关联到 Issue')
       } else {
         message.success('已保存')
       }

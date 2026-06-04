@@ -1,6 +1,9 @@
 import { Button, Form, Input, message, Select } from 'antd'
 import { useState } from 'react'
-import { YoloTeamYoloCliInternalModelExecutor as Executor, useCreateIssue } from '../generated'
+import { useCreateIssue } from '../generated'
+import {
+  YoloTeamYoloCliInternalModelExecutor as Executor,
+} from '../generated'
 
 interface CreateIssueFormProps {
   projectId: number

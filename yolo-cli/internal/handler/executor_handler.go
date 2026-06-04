@@ -129,7 +129,7 @@ func (h *ExecutorHandler) Update(ctx context.Context, req UpdateExecutorReq) (*m
 //	@Param			name	path		string	true	"Executor name"
 //	@Success		200		{object}	common.Response
 //	@Failure		404		{object}	common.Response
-//	@Router			/api/v1/executors/{name} [delete]
+//	@Router			/api/v1/executors/{name}/delete [post]
 func (h *ExecutorHandler) Delete(ctx context.Context, req DeleteExecutorReq) (struct{}, error) {
 	if err := h.repo.DeleteByName(req.Name); err != nil {
 		return struct{}{}, common.NewAppError(40401, "executor not found")

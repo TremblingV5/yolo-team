@@ -9,7 +9,6 @@ type Issue struct {
 	ID          int64      `gorm:"primaryKey;autoIncrement" json:"id"`
 	Key         string     `gorm:"column:key;type:varchar(64);uniqueIndex;not null" json:"key"`
 	ProjectID   int64      `gorm:"column:project_id;not null;index" json:"project_id"`
-	ParentID    *int64     `gorm:"column:parent_id;default:null" json:"parent_id"`
 	Status      string     `gorm:"column:status;type:varchar(16);not null;default:created" json:"status"`
 	Title       string     `gorm:"column:title;type:varchar(200);not null" json:"title"`
 	Description string     `gorm:"column:description;type:varchar(512);default:''" json:"description"`
@@ -23,9 +22,7 @@ type Issue struct {
 	CreatedAt   time.Time  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 	UpdatedAt   time.Time  `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 
-	Children  []Issue    `gorm:"-" json:"children,omitempty"`
 	Project   *Project   `gorm:"foreignKey:ProjectID" json:"-"`
-	Parent    *Issue     `gorm:"foreignKey:ParentID" json:"-"`
 	Executor  *Executor  `gorm:"foreignKey:ExecutorID" json:"executor,omitempty"`
 	Documents []Document `gorm:"many2many:issue_documents;" json:"documents,omitempty"`
 }
@@ -73,10 +70,6 @@ func (i *Issue) Validate() error {
 	}
 
 	return nil
-}
-
-func (i *Issue) CanBeParent() bool {
-	return i.ParentID == nil
 }
 
 func (i *Issue) ApplyUpdate(req *UpdateIssueRequest) {

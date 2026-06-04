@@ -1,18 +1,22 @@
-import { useState, useCallback } from 'react'
 import { Drawer, message } from 'antd'
+import { useCallback, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useListProjects, useListIssues, useListExecutors, useListDocuments } from '../generated'
-import {
-  YoloTeamYoloCliInternalModelIssue as Issue,
-  ListIssuesQueryParams,
-} from '../generated'
-import TopBar from '../components/TopBar'
-import KanbanBoard from '../components/KanbanBoard'
-import ExecutorKanban from '../components/ExecutorKanban'
-import IssueDrawer from '../components/IssueDrawer'
+import { useGet, useMutate } from 'restful-react'
 import CreateIssueForm from '../components/CreateIssueForm'
 import CreateProjectModal from '../components/CreateProjectModal'
+import ExecutorKanban from '../components/ExecutorKanban'
+import IssueDrawer from '../components/IssueDrawer'
+import KanbanBoard from '../components/KanbanBoard'
 import ProjectEditModal from '../components/ProjectEditModal'
+import TopBar from '../components/TopBar'
+import {
+    YoloTeamYoloCliInternalCommonResponse as CommonResponse,
+    YoloTeamYoloCliInternalModelIssue as Issue,
+    ListIssuesQueryParams, useListDocuments, useListExecutors, useListIssues, useListProjects
+} from '../generated'
+
+interface UpdateIssueResponse extends CommonResponse { data?: Issue }
+interface GetIssueResponse extends CommonResponse { data?: Issue }
 
 export default function KanbanPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -44,6 +48,16 @@ export default function KanbanPage() {
 
   const displayIssues = localIssues.length > 0 ? localIssues : issues
 
+  // Dynamic-key API helpers using restful-react's useMutate / useGet
+  const { mutate: updateIssueMutate } = useMutate<
+    UpdateIssueResponse, CommonResponse, void, Record<string, any>, { key: string }
+  >('PUT', (params) => `/api/v1/issues/${params.key}`)
+
+  const { refetch: getIssue } = useGet<GetIssueResponse, CommonResponse, void, { key: string }>(
+    (params) => `/api/v1/issues/${params.key}`,
+    { lazy: true }
+  )
+
   const setProject = useCallback((v: string | undefined) => {
     if (v) {
       setSearchParams({ project: v })
@@ -60,14 +74,11 @@ export default function KanbanPage() {
   }, [refetchProjects, refetchIssues])
 
   const updateIssue = async (key: string, body: Record<string, any>) => {
-    const resp = await fetch(`/api/v1/issues/${key}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    const json = await resp.json()
-    if (json.code !== 0) throw new Error(json.message || '更新失败')
-    return json
+    try {
+      await updateIssueMutate(body, { pathParams: { key } })
+    } catch (e: any) {
+      throw new Error(e?.data?.message || e.message || '更新失败')
+    }
   }
 
   const handleDragEnd = async (issueKey: string, newStatus: string) => {
@@ -127,8 +138,8 @@ export default function KanbanPage() {
 
   const handleCardClick = async (issue: Issue) => {
     try {
-      const resp = await fetch(`/api/v1/issues/${issue.key}`)
-      const json = await resp.json()
+      const result = await getIssue({ pathParams: { key: issue.key || '' } })
+      const json = (result as any) || {}
       if (json.code === 0) {
         setDrawerIssue(json.data)
         setIsCreating(false)
