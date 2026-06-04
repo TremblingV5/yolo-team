@@ -26,18 +26,18 @@ func NewIssueHandler() *IssueHandler {
 }
 
 type ListIssueReq struct {
-	ProjectID  *int64  `form:"project_id"`
-	Status     *string `form:"status"`
-	ExecutorID *int64  `form:"executor_id"`
+	ProjectID    *int64  `form:"project_id"`
+	Status       *string `form:"status"`
+	ExecutorName string  `form:"executor_name"`
 }
 
 type CreateIssueReq struct {
-	ProjectID   int64  `json:"project_id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Priority    string `json:"priority"`
-	ExecutorID  *int64 `json:"executor_id"`
-	Deadline    string `json:"deadline"`
+	ProjectID    int64  `json:"project_id"`
+	Title        string `json:"title"`
+	Description  string `json:"description"`
+	Priority     string `json:"priority"`
+	ExecutorName string `json:"executor_name"`
+	Deadline     string `json:"deadline"`
 }
 
 type GetIssueReq struct {
@@ -54,8 +54,8 @@ type DeleteIssueReq struct {
 }
 
 type TodoIssueReq struct {
-	ExecutorID int64 `form:"executor_id"`
-	Limit      int   `form:"limit"`
+	ExecutorName string `form:"executor_name"`
+	Limit        int    `form:"limit"`
 }
 
 type LinkDocReq struct {
@@ -99,7 +99,7 @@ type DeleteTaskReq struct {
 //	@Produce		json
 //	@Param			project_id	query		int		false	"Filter by project ID"
 //	@Param			status		query		string	false	"Filter by status"
-//	@Param			executor_id	query		int		false	"Filter by executor ID"
+//	@Param			executor_name	query	string	false	"Filter by executor name"
 //	@Success		200			{object}	common.Response{data=[]model.Issue}
 //	@Failure		500			{object}	common.Response
 //	@Router			/api/v1/issues [get]
@@ -107,7 +107,13 @@ func (h *IssueHandler) List(ctx context.Context, req ListIssueReq) ([]model.Issu
 	filter := repository.IssueFilter{}
 	filter.ProjectID = req.ProjectID
 	filter.Status = req.Status
-	filter.ExecutorID = req.ExecutorID
+	if req.ExecutorName != "" {
+		exec, err := h.execRepo.GetByName(req.ExecutorName)
+		if err != nil {
+			return nil, common.NewAppError(40401, "executor not found")
+		}
+		filter.ExecutorID = &exec.ID
+	}
 
 	return h.repo.List(filter)
 }
@@ -127,7 +133,13 @@ func (h *IssueHandler) List(ctx context.Context, req ListIssueReq) ([]model.Issu
 func (h *IssueHandler) Create(ctx context.Context, req CreateIssueReq) (*model.Issue, error) {
 	issue := model.NewIssue(req.ProjectID, req.Title)
 	issue.Description = req.Description
-	issue.ExecutorID = req.ExecutorID
+	if req.ExecutorName != "" {
+		exec, err := h.execRepo.GetByName(req.ExecutorName)
+		if err != nil {
+			return nil, common.NewAppError(40401, "executor not found")
+		}
+		issue.ExecutorID = &exec.ID
+	}
 	if req.Priority != "" {
 		issue.Priority = req.Priority
 	}
@@ -191,6 +203,15 @@ func (h *IssueHandler) Update(ctx context.Context, req UpdateIssueReq) (*model.I
 	}
 
 	issue.ApplyUpdate(&req.UpdateIssueRequest)
+
+	if req.ExecutorName != nil {
+		exec, err := h.execRepo.GetByName(*req.ExecutorName)
+		if err != nil {
+			return nil, common.NewAppError(40401, "executor not found")
+		}
+		issue.ExecutorID = &exec.ID
+	}
+
 	if err := issue.Validate(); err != nil {
 		return nil, common.NewAppError(40001, err.Error())
 	}
@@ -241,22 +262,27 @@ func (h *IssueHandler) Delete(ctx context.Context, req DeleteIssueReq) (struct{}
 //	@Description	Get todo list for an executor
 //	@Tags			Issues
 //	@Produce		json
-//	@Param			executor_id	query		int	true	"Executor ID"
+//	@Param			executor_name	query	string	true	"Executor name"
 //	@Param			limit		query		int	false	"Max results (default 20)"
 //	@Success		200			{object}	common.Response{data=[]model.Issue}
 //	@Failure		400			{object}	common.Response
 //	@Failure		500			{object}	common.Response
 //	@Router			/api/v1/issues/todo [get]
 func (h *IssueHandler) Todo(ctx context.Context, req TodoIssueReq) ([]model.Issue, error) {
-	if req.ExecutorID == 0 {
-		return nil, common.NewAppError(40001, "executor_id is required")
+	if req.ExecutorName == "" {
+		return nil, common.NewAppError(40001, "executor_name is required")
+	}
+
+	exec, err := h.execRepo.GetByName(req.ExecutorName)
+	if err != nil {
+		return nil, common.NewAppError(40401, "executor not found")
 	}
 
 	if req.Limit == 0 {
 		req.Limit = 20
 	}
 
-	return h.repo.GetTodo(req.ExecutorID, req.Limit)
+	return h.repo.GetTodo(exec.ID, req.Limit)
 }
 
 // LinkDocument godoc

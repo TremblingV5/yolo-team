@@ -89,10 +89,6 @@ func (i *Issue) ApplyUpdate(req *UpdateIssueRequest) {
 		i.Priority = *req.Priority
 	}
 
-	if req.ExecutorID != nil {
-		i.ExecutorID = req.ExecutorID
-	}
-
 	if req.Deadline != nil {
 		i.Deadline = req.Deadline
 	}
@@ -111,13 +107,13 @@ func (i *Issue) ApplyUpdate(req *UpdateIssueRequest) {
 }
 
 type UpdateIssueRequest struct {
-	Title       *string    `json:"title"`
-	Description *string    `json:"description"`
-	Status      *string    `json:"status"`
-	Priority    *string    `json:"priority"`
-	ExecutorID  *int64     `json:"executor_id"`
-	Deadline    *time.Time `json:"deadline"`
-	RepoURL     *string    `json:"repo_url"`
-	RepoName    *string    `json:"repo_name"`
-	BranchName  *string    `json:"branch_name"`
+	Title        *string    `json:"title"`
+	Description  *string    `json:"description"`
+	Status       *string    `json:"status"`
+	Priority     *string    `json:"priority"`
+	ExecutorName *string    `json:"executor_name"`
+	Deadline     *time.Time `json:"deadline"`
+	RepoURL      *string    `json:"repo_url"`
+	RepoName     *string    `json:"repo_name"`
+	BranchName   *string    `json:"branch_name"`
 }

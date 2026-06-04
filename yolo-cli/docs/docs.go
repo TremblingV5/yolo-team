@@ -389,9 +389,9 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
-                        "type": "integer",
-                        "description": "Filter by executor ID",
-                        "name": "executor_id",
+                        "type": "string",
+                        "description": "Filter by executor name",
+                        "name": "executor_name",
                         "in": "query"
                     }
                 ],
@@ -490,9 +490,9 @@ const docTemplate = `{
                 "operationId": "TodoIssues",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "Executor ID",
-                        "name": "executor_id",
+                        "type": "string",
+                        "description": "Executor name",
+                        "name": "executor_name",
                         "in": "query",
                         "required": true
                     },
@@ -1405,8 +1405,8 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "executor_id": {
-                    "type": "integer"
+                "executor_name": {
+                    "type": "string"
                 },
                 "priority": {
                     "type": "string"
@@ -1739,8 +1739,8 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "executor_id": {
-                    "type": "integer"
+                "executor_name": {
+                    "type": "string"
                 },
                 "priority": {
                     "type": "string"

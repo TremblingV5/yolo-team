@@ -15,7 +15,7 @@ var issueCmd = &cobra.Command{Use: "issue", Short: "Manage issues"}
 var (
 	issueListProject  int
 	issueListStatus   string
-	issueListExecutor int
+	issueListExecutor string
 )
 
 var issueListCmd = &cobra.Command{
@@ -30,9 +30,8 @@ var issueListCmd = &cobra.Command{
 		if issueListStatus != "" {
 			req.Status = &issueListStatus
 		}
-		if issueListExecutor > 0 {
-			v := int64(issueListExecutor)
-			req.ExecutorID = &v
+		if issueListExecutor != "" {
+			req.ExecutorName = issueListExecutor
 		}
 
 		issues, err := h.List(ctx, req)
@@ -69,7 +68,7 @@ var (
 	issueCreateProject  int
 	issueCreateDesc     string
 	issueCreatePri      string
-	issueCreateExec     int
+	issueCreateExec     string
 	issueCreateDeadline string
 )
 
@@ -81,15 +80,12 @@ var issueCreateCmd = &cobra.Command{
 		}
 		h := handler.NewIssueHandler()
 		req := handler.CreateIssueReq{
-			ProjectID:   int64(issueCreateProject),
-			Title:       issueCreateTitle,
-			Description: issueCreateDesc,
-			Priority:    issueCreatePri,
-			Deadline:    issueCreateDeadline,
-		}
-		if issueCreateExec > 0 {
-			v := int64(issueCreateExec)
-			req.ExecutorID = &v
+			ProjectID:    int64(issueCreateProject),
+			Title:        issueCreateTitle,
+			Description:  issueCreateDesc,
+			Priority:     issueCreatePri,
+			ExecutorName: issueCreateExec,
+			Deadline:     issueCreateDeadline,
 		}
 
 		iss, err := h.Create(ctx, req)
@@ -144,7 +140,7 @@ var issueInfoCmd = &cobra.Command{
 var (
 	issueUpdateStatus   string
 	issueUpdateTitle    string
-	issueUpdateExec     int64
+	issueUpdateExec     string
 	issueUpdateDeadline string
 	issueUpdateRepoURL  string
 	issueUpdateRepoName string
@@ -163,7 +159,7 @@ var issueUpdateCmd = &cobra.Command{
 			body.Title = &issueUpdateTitle
 		}
 		if cmd.Flags().Changed("executor") {
-			body.ExecutorID = &issueUpdateExec
+			body.ExecutorName = &issueUpdateExec
 		}
 		if cmd.Flags().Changed("deadline") {
 			t, err := time.Parse("2006-01-02", issueUpdateDeadline)
@@ -204,22 +200,22 @@ var issueDeleteCmd = &cobra.Command{
 }
 
 var (
-	todoExecutor int
+	todoExecutor string
 	todoLimit    int
 )
 
 var issueTodoCmd = &cobra.Command{
 	Use: "todo", Short: "Show todo list for an executor",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if todoExecutor == 0 {
-			return fmt.Errorf("executor (-e) is required")
+		if todoExecutor == "" {
+			return fmt.Errorf("executor name (-e) is required")
 		}
 		limit := todoLimit
 		if limit <= 0 {
 			limit = 20
 		}
 		h := handler.NewIssueHandler()
-		issues, err := h.Todo(ctx, handler.TodoIssueReq{ExecutorID: int64(todoExecutor), Limit: limit})
+		issues, err := h.Todo(ctx, handler.TodoIssueReq{ExecutorName: todoExecutor, Limit: limit})
 		if err != nil {
 			return err
 		}
@@ -247,23 +243,23 @@ func init() {
 
 	issueListCmd.Flags().IntVarP(&issueListProject, "project", "p", 0, "filter by project ID")
 	issueListCmd.Flags().StringVarP(&issueListStatus, "status", "s", "", "filter by status")
-	issueListCmd.Flags().IntVarP(&issueListExecutor, "executor", "e", 0, "filter by executor ID")
+	issueListCmd.Flags().StringVarP(&issueListExecutor, "executor", "e", "", "filter by executor name")
 
 	issueCreateCmd.Flags().StringVarP(&issueCreateTitle, "title", "t", "", "issue title")
 	issueCreateCmd.Flags().IntVarP(&issueCreateProject, "project", "p", 0, "project ID")
 	issueCreateCmd.Flags().StringVarP(&issueCreateDesc, "description", "d", "", "description")
 	issueCreateCmd.Flags().StringVar(&issueCreatePri, "priority", "", "priority")
-	issueCreateCmd.Flags().IntVar(&issueCreateExec, "executor", 0, "executor ID")
+	issueCreateCmd.Flags().StringVar(&issueCreateExec, "executor", "", "executor name")
 	issueCreateCmd.Flags().StringVar(&issueCreateDeadline, "deadline", "", "deadline (YYYY-MM-DD)")
 
 	issueUpdateCmd.Flags().StringVarP(&issueUpdateStatus, "status", "s", "", "new status")
 	issueUpdateCmd.Flags().StringVarP(&issueUpdateTitle, "title", "t", "", "new title")
-	issueUpdateCmd.Flags().Int64Var(&issueUpdateExec, "executor", 0, "executor ID")
+	issueUpdateCmd.Flags().StringVar(&issueUpdateExec, "executor", "", "executor name")
 	issueUpdateCmd.Flags().StringVar(&issueUpdateDeadline, "deadline", "", "deadline")
 	issueUpdateCmd.Flags().StringVar(&issueUpdateRepoURL, "repo-url", "", "repo URL")
 	issueUpdateCmd.Flags().StringVar(&issueUpdateRepoName, "repo-name", "", "repo name")
 	issueUpdateCmd.Flags().StringVar(&issueUpdateBranch, "branch", "", "branch name")
 
-	issueTodoCmd.Flags().IntVarP(&todoExecutor, "executor", "e", 0, "executor ID (required)")
+	issueTodoCmd.Flags().StringVarP(&todoExecutor, "executor", "e", "", "executor name (required)")
 	issueTodoCmd.Flags().IntVarP(&todoLimit, "limit", "n", 20, "max results")
 }

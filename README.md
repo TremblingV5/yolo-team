@@ -94,3 +94,8 @@ yolo doc create -p 1 -t "需求文档"
 ## 设计文档
 
 详见 [docs/architecture.md](./docs/architecture.md)
+
+## In Progress
+
+1. agent tui，用于便捷管理
+2. 页面上的agent
