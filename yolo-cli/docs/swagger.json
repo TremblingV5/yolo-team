@@ -9,6 +9,201 @@
     "host": "localhost:8080",
     "basePath": "/api/v1",
     "paths": {
+        "/api/v1/ai/chat": {
+            "post": {
+                "description": "Send a message to AI and receive streaming SSE response",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Chat with AI",
+                "operationId": "Chat",
+                "parameters": [
+                    {
+                        "description": "Chat request",
+                        "name": "chat",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.ChatRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ai/sessions": {
+            "get": {
+                "description": "Get all chat sessions",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "List AI chat sessions",
+                "operationId": "ListSessions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/internal_handler.SessionResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ai/sessions/reset": {
+            "post": {
+                "description": "Delete all chat sessions",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Reset all chat sessions",
+                "operationId": "ResetSessions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ai/sessions/{session_id}": {
+            "get": {
+                "description": "Get all messages of a chat session",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Get session messages",
+                "operationId": "GetSessionMessages",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "session_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/yolo-team_yolo-cli_internal_ai.Message"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a session by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Delete a chat session",
+                "operationId": "DeleteSession",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "session_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/yolo-team_yolo-cli_internal_common.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/documents/{key}": {
             "get": {
                 "description": "Get document details by key",
@@ -1362,6 +1557,17 @@
         }
     },
     "definitions": {
+        "internal_handler.ChatRequest": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "session_id": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.CreateDocReq": {
             "type": "object",
             "properties": {
@@ -1484,6 +1690,26 @@
                 }
             }
         },
+        "internal_handler.SessionResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "message_count": {
+                    "type": "integer"
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.UpdateDocReq": {
             "type": "object",
             "properties": {
@@ -1539,6 +1765,20 @@
                     "type": "string"
                 },
                 "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "yolo-team_yolo-cli_internal_ai.Message": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "timestamp": {
                     "type": "string"
                 }
             }

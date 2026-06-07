@@ -14,8 +14,16 @@ func init() {
 	DefaultDir = filepath.Join(home, ".yolo-team")
 }
 
+type AIConfig struct {
+	BaseURL      string `json:"base_url"`
+	APIKey       string `json:"api_key"`
+	Model        string `json:"model"`
+	SystemPrompt string `json:"system_prompt"`
+}
+
 type Settings struct {
-	Workspace string `json:"workspace"`
+	Workspace string  `json:"workspace"`
+	AI        AIConfig `json:"ai"`
 }
 
 func SettingsPath() string {

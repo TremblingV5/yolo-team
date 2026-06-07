@@ -140,3 +140,5 @@ func (h *ProjectHandler) Delete(ctx context.Context, req DeleteProjectReq) (stru
 
 	return struct{}{}, nil
 }
+
+

@@ -2,7 +2,7 @@ import { PlusOutlined } from '@ant-design/icons'
 import { Button, Form, Input, message, Modal, Popconfirm, Table } from 'antd'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useCreateDocument, useListDocuments } from '../generated'
+import { useCreateDocument, useDeleteDocument, useListDocuments } from '../generated'
 
 export default function DocumentList() {
   const { key } = useParams<{ key: string }>()

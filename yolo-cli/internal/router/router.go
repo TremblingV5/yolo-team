@@ -2,9 +2,12 @@ package router
 
 import (
 	"io/fs"
+	"log"
 	"net/http"
 	"strings"
 
+	"yolo-team/yolo-cli/internal/ai"
+	"yolo-team/yolo-cli/internal/config"
 	"yolo-team/yolo-cli/internal/frontend"
 	"yolo-team/yolo-cli/internal/handler"
 
@@ -13,12 +16,35 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+func createAgent(workspace string, projectH *handler.ProjectHandler, executorH *handler.ExecutorHandler, issueH, taskH *handler.IssueHandler, docH *handler.DocumentHandler) (*ai.Agent, *ai.SessionManager) {
+	settings, err := config.LoadSettings()
+	if err != nil {
+		settings = &config.Settings{Workspace: workspace}
+	}
+	cfg := ai.LoadConfig(settings)
+	cfg.Workspace = workspace
+	sessionMgr := ai.NewSessionManager(workspace)
+
+	agent, agentErr := ai.NewAgent(cfg, sessionMgr, projectH, executorH, issueH, taskH, docH)
+	if agentErr != nil {
+		log.Printf("[AI] failed to create agent: %v", agentErr)
+	} else {
+		log.Printf("[AI] agent created successfully (model=%s, base_url=%s)", cfg.Model, cfg.BaseURL)
+	}
+	return agent, sessionMgr
+}
+
 func Setup(workspace string) *gin.Engine {
 	r := gin.Default()
 
 	api := r.Group("/api/v1")
 	{
 		projectH := handler.NewProjectHandler()
+		executorH := handler.NewExecutorHandler()
+		issueH := handler.NewIssueHandler()
+		taskH := issueH
+		docH := handler.NewDocumentHandler(workspace)
+
 		projects := api.Group("/projects")
 		{
 			projects.GET("", handler.Wrap(projectH.List))
@@ -28,7 +54,6 @@ func Setup(workspace string) *gin.Engine {
 			projects.DELETE("/:key", handler.Wrap(projectH.Delete))
 		}
 
-		executorH := handler.NewExecutorHandler()
 		executors := api.Group("/executors")
 		{
 			executors.GET("", handler.Wrap(executorH.List))
@@ -37,7 +62,6 @@ func Setup(workspace string) *gin.Engine {
 			executors.POST("/:name/delete", handler.Wrap(executorH.Delete))
 		}
 
-		issueH := handler.NewIssueHandler()
 		issues := api.Group("/issues")
 		{
 			issues.GET("", handler.Wrap(issueH.List))
@@ -50,7 +74,6 @@ func Setup(workspace string) *gin.Engine {
 			issues.DELETE("/:key/documents", handler.Wrap(issueH.UnlinkDocument))
 		}
 
-		docH := handler.NewDocumentHandler(workspace)
 		projects.GET("/:key/documents", handler.Wrap(docH.List))
 		projects.POST("/:key/documents", handler.Wrap(docH.Create))
 		documents := api.Group("/documents")
@@ -65,6 +88,17 @@ func Setup(workspace string) *gin.Engine {
 		issues.GET("/:key/tasks", handler.Wrap(issueH.ListTasks))
 		issues.PUT("/:key/tasks/:task_key", handler.Wrap(issueH.UpdateTask))
 		issues.POST("/:key/tasks/:task_key/delete", handler.Wrap(issueH.DeleteTask))
+
+		agent, sessionMgr := createAgent(workspace, projectH, executorH, issueH, taskH, docH)
+		aiH := ai.NewAIHandler(agent, sessionMgr, workspace)
+		aiGroup := api.Group("/ai")
+		{
+			aiGroup.POST("/chat", aiH.Chat)
+			aiGroup.GET("/sessions", handler.Wrap(aiH.ListSessions))
+			aiGroup.GET("/sessions/:session_id", handler.Wrap(aiH.GetSessionMessages))
+			aiGroup.DELETE("/sessions/:session_id", handler.Wrap(aiH.DeleteSession))
+			aiGroup.POST("/sessions/reset", handler.Wrap(aiH.ResetSessions))
+		}
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))

@@ -1,5 +1,12 @@
 basePath: /api/v1
 definitions:
+  internal_handler.ChatRequest:
+    properties:
+      message:
+        type: string
+      session_id:
+        type: string
+    type: object
   internal_handler.CreateDocReq:
     properties:
       content:
@@ -79,6 +86,19 @@ definitions:
       issueKey:
         type: string
     type: object
+  internal_handler.SessionResponse:
+    properties:
+      created_at:
+        type: string
+      message_count:
+        type: integer
+      session_id:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
   internal_handler.UpdateDocReq:
     properties:
       content:
@@ -115,6 +135,15 @@ definitions:
       taskKey:
         type: string
       title:
+        type: string
+    type: object
+  yolo-team_yolo-cli_internal_ai.Message:
+    properties:
+      content:
+        type: string
+      role:
+        type: string
+      timestamp:
         type: string
     type: object
   yolo-team_yolo-cli_internal_common.Response:
@@ -262,6 +291,130 @@ info:
   title: Yolo Team API
   version: "1.0"
 paths:
+  /api/v1/ai/chat:
+    post:
+      consumes:
+      - application/json
+      description: Send a message to AI and receive streaming SSE response
+      operationId: Chat
+      parameters:
+      - description: Chat request
+        in: body
+        name: chat
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.ChatRequest'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Chat with AI
+      tags:
+      - AI
+  /api/v1/ai/sessions:
+    get:
+      description: Get all chat sessions
+      operationId: ListSessions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/internal_handler.SessionResponse'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: List AI chat sessions
+      tags:
+      - AI
+  /api/v1/ai/sessions/{session_id}:
+    delete:
+      description: Delete a session by its ID
+      operationId: DeleteSession
+      parameters:
+      - description: Session ID
+        in: path
+        name: session_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Delete a chat session
+      tags:
+      - AI
+    get:
+      description: Get all messages of a chat session
+      operationId: GetSessionMessages
+      parameters:
+      - description: Session ID
+        in: path
+        name: session_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/yolo-team_yolo-cli_internal_ai.Message'
+                  type: array
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Get session messages
+      tags:
+      - AI
+  /api/v1/ai/sessions/reset:
+    post:
+      description: Delete all chat sessions
+      operationId: ResetSessions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/yolo-team_yolo-cli_internal_common.Response'
+      summary: Reset all chat sessions
+      tags:
+      - AI
   /api/v1/documents/{key}:
     get:
       description: Get document details by key
