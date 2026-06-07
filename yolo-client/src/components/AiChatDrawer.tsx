@@ -1,12 +1,12 @@
-import { LoadingOutlined } from '@ant-design/icons'
 import { HistoryOutlined, PlusOutlined } from '@ant-design/icons'
-import { Bubble, Sender, Conversations } from '@ant-design/x'
+import { Bubble, Conversations, Sender } from '@ant-design/x'
 import XMarkdown from '@ant-design/x-markdown'
-import '@ant-design/x-markdown/themes/light.css'
 import '@ant-design/x-markdown/themes/dark.css'
-import { Button, Collapse, Drawer, Popover, Space, Spin, Tag, message as antMsg } from 'antd'
+import '@ant-design/x-markdown/themes/light.css'
+import { Button, Drawer, Popover, message as antMsg } from 'antd'
 import { useEffect, useRef, useState } from 'react'
 import { useDeleteSession, useGetSessionMessages, useListSessions } from '../generated'
+import { toolCallComponents } from './ToolCallRender'
 
 interface Session {
   session_id: string
@@ -266,22 +266,6 @@ export default function AiChatDrawer({ open, onClose }: AiChatDrawerProps) {
     }
   }
 
-  // 通用高阶组件：标签未闭合时显示加载文本
-  const withCompleteOnly = (Component: any, loadingText = '加载中...') =>
-    ({ streamStatus, ...props }: any) => {
-      if (streamStatus === 'loading') {
-        return (
-          <div style={{ margin: '8px 0', color: '#8c8c8c' }}>
-            <Space>
-              <Spin indicator={<LoadingOutlined spin />} size="small" />
-              <span>{loadingText}</span>
-            </Space>
-          </div>
-        )
-      }
-      return <Component {...props} />
-    }
-
   const bubbleItems = messages.map((m) => ({
     key: m.key,
     role: m.role,
@@ -294,48 +278,7 @@ export default function AiChatDrawer({ open, onClose }: AiChatDrawerProps) {
           return (
             <XMarkdown className={xmClassName} content={text} paragraphTag="div"
               streaming={{ hasNextChunk: m.streaming ?? false, enableAnimation: true, tail: { content: '▋' } }}
-              components={{
-                tool_call: withCompleteOnly(({ children, ...props }: any) => {
-                  console.log('[XMarkdown] tool_call', { props, childLen: String(children).length })
-                  return (
-                    <Collapse
-                      size="small"
-                      defaultActiveKey={[]}
-                      style={{ margin: '8px 0', background: '#fafafa', borderRadius: 6 }}
-                      items={[{
-                        key: 'tool_call',
-                        label: <span style={{ fontSize: 13 }}>🛠️ 调用工具 <Tag style={{ fontSize: 11 }}>{props['data-tool-name'] || '未知'}</Tag></span>,
-                        children: <pre style={{ fontSize: 12, margin: 0, whiteSpace: 'pre-wrap' }}>{children}</pre>,
-                      }]}
-                    />
-                  )
-                }, '正在调用工具...'),
-
-                tool_result: withCompleteOnly(({ children }: any) => {
-                  console.log('[XMarkdown] tool_result', { childLen: String(children).length })
-                  return (
-                    <Collapse
-                      size="small"
-                      defaultActiveKey={[]}
-                      style={{ margin: '8px 0', background: '#fafafa', borderRadius: 6 }}
-                      items={[{
-                        key: 'tool_result',
-                        label: <span style={{ fontSize: 13 }}>📎 调用工具结果</span>,
-                        children: <pre style={{ fontSize: 12, margin: 0, whiteSpace: 'pre-wrap', color: '#666' }}>{children}</pre>,
-                      }]}
-                    />
-                  )
-                }, '正在等待工具结果...'),
-
-                tool_call_error: withCompleteOnly(({ children }: any) => {
-                  console.log('[XMarkdown] tool_call_error', { childLen: String(children).length })
-                  return (
-                    <div style={{ margin: '8px 0', padding: '8px 12px', background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 6, fontSize: 13, color: '#cf1322' }}>
-                      ⚠️ 调用异常：{children}
-                    </div>
-                  )
-                }, ''),
-              }}
+              components={toolCallComponents}
             />
           )
         }
