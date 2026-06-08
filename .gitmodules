@@ -1,0 +1,3 @@
+[submodule "deepseek-reasonix"]
+	path = deepseek-reasonix
+	url = git@github.com:esengine/DeepSeek-Reasonix.git
