@@ -1,10 +1,15 @@
 package ai
 
 import (
+	_ "embed"
 	"os"
+	"strings"
 
 	"yolo-team/yolo-cli/internal/config"
 )
+
+//go:embed system_prompt.md
+var defaultPrompt string
 
 // Config holds AI provider configuration.
 type Config struct {
@@ -20,7 +25,7 @@ func LoadConfig(settings *config.Settings) *Config {
 	cfg := &Config{
 		BaseURL:      "https://api.openai.com/v1",
 		Model:        "gpt-4o",
-		SystemPrompt: "You are Yolo-Team, an AI assistant for project management.",
+		SystemPrompt: strings.TrimSpace(defaultPrompt),
 	}
 
 	if settings != nil {
@@ -32,9 +37,6 @@ func LoadConfig(settings *config.Settings) *Config {
 		}
 		if settings.AI.Model != "" {
 			cfg.Model = settings.AI.Model
-		}
-		if settings.AI.SystemPrompt != "" {
-			cfg.SystemPrompt = settings.AI.SystemPrompt
 		}
 	}
 
