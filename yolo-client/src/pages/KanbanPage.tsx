@@ -25,6 +25,7 @@ export default function KanbanPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerIssue, setDrawerIssue] = useState<Issue | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [issueNavStack, setIssueNavStack] = useState<string[]>([])
   const [projectModalOpen, setProjectModalOpen] = useState(false)
   const [editProjectKey, setEditProjectKey] = useState<string | null>(null)
   const [localIssues, setLocalIssues] = useState<Issue[]>([])
@@ -155,14 +156,32 @@ export default function KanbanPage() {
   }
 
   const handleDrawerClose = () => {
-    setDrawerOpen(false)
-    setDrawerIssue(null)
+    if (issueNavStack.length > 0) {
+      // Go back to parent issue
+      const prevKey = issueNavStack[issueNavStack.length - 1]
+      setIssueNavStack((s) => s.slice(0, -1))
+      getIssue({ pathParams: { key: prevKey } }).then((result: any) => {
+        const json = (result as any) || {}
+        if (json.code === 0) setDrawerIssue(json.data)
+      }).catch(() => {
+        setDrawerOpen(false)
+        setDrawerIssue(null)
+      })
+    } else {
+      setDrawerOpen(false)
+      setDrawerIssue(null)
+    }
     setIsCreating(false)
   }
 
   const handleSaved = () => {
-    setDrawerOpen(false)
-    setIsCreating(false)
+    // Refresh drawer issue if drawer is open
+    if (drawerIssue?.key) {
+      getIssue({ pathParams: { key: drawerIssue.key } }).then((result: any) => {
+        const json = (result as any) || {}
+        if (json.code === 0) setDrawerIssue(json.data)
+      })
+    }
     load()
   }
 
@@ -228,6 +247,27 @@ export default function KanbanPage() {
             open={drawerOpen}
             onClose={handleDrawerClose}
             onSaved={handleSaved}
+            onChildClick={async (key) => {
+              setIssueNavStack((s) => [...s, drawerIssue?.key || ''])
+              // Close drawer first for animation, then open with new issue
+              setDrawerOpen(false)
+              setTimeout(async () => {
+                try {
+                  const result = await getIssue({ pathParams: { key } })
+                  const json = (result as any) || {}
+                  if (json.code === 0) {
+                    setDrawerIssue(json.data)
+                    setDrawerOpen(true)
+                  }
+                } catch {}
+              }, 150)
+            }}
+            onLinkChild={async (childKey, parentKey) => {
+              try {
+                const result = await updateIssueMutate({ parent_key: parentKey } as any, { pathParams: { key: childKey } })
+                return (result as any)?.code === 0
+              } catch { return false }
+            }}
           />
         ) : null}
       </Drawer>

@@ -59,10 +59,18 @@ func (r *IssueRepo) Create(issue *model.Issue) error {
 
 func (r *IssueRepo) GetByKey(key string) (*model.Issue, error) {
 	var i model.Issue
-	err := db.DB.Preload("Executor").Preload("Documents").Where("key = ?", key).First(&i).Error
+	err := db.DB.
+		Preload("Executor").
+		Preload("Documents").
+		Where("key = ?", key).First(&i).Error
 	if err != nil {
 		return nil, err
 	}
+
+	// Load children separately to avoid circular preload issues
+	var children []model.Issue
+	db.DB.Where("parent_id = ?", i.ID).Find(&children)
+	i.Children = children
 
 	return &i, nil
 }
@@ -79,8 +87,10 @@ func (r *IssueRepo) GetByID(id int64) (*model.Issue, error) {
 }
 
 func (r *IssueRepo) Save(issue *model.Issue) error {
+	// Use Select to include pointer fields that may be set to nil (like ParentID)
 	_, err := db.G[model.Issue]().
 		Where(query.Issue.ID.Eq(issue.ID)).
+		Select("*").
 		Updates(context.Background(), *issue)
 	return err
 }
@@ -127,4 +137,10 @@ func (r *IssueRepo) UnlinkDocument(issueID int64, documentID int64) error {
 	return db.DB.Model(&model.Issue{ID: issueID}).
 		Association("Documents").
 		Delete(&model.Document{ID: documentID})
+}
+
+func (r *IssueRepo) ListByParent(parentID int64) ([]model.Issue, error) {
+	var issues []model.Issue
+	err := db.DB.Where("parent_id = ?", parentID).Find(&issues).Error
+	return issues, err
 }

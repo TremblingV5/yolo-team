@@ -50,7 +50,7 @@ func (t *issueListTool) InvokableRun(ctx context.Context, arguments string, opts
 type issueCreateTool struct{ h *handler.IssueHandler }
 
 func (t *issueCreateTool) Info(ctx context.Context) (*schema.ToolInfo, error) {
-	return &schema.ToolInfo{Name: "create_issue", Desc: "创建一个新的 Issue。必需参数: project_id（项目数字ID）, title（标题）。可选: description, priority（低/中/高/紧急）, executor_name（执行人名称）, deadline（截止日期，格式 YYYY-MM-DD）"}, nil
+	return &schema.ToolInfo{Name: "create_issue", Desc: "创建一个新的 Issue。必需参数: project_id（项目数字ID）, title（标题）。可选: description, priority（低/中/高/紧急）, executor_name（执行人名称）, deadline（截止日期，格式 YYYY-MM-DD）, parent_key（父 Issue 的 Key）"}, nil
 }
 func (t *issueCreateTool) InvokableRun(ctx context.Context, arguments string, opts ...tool.Option) (string, error) {
 	var params struct {
@@ -60,6 +60,7 @@ func (t *issueCreateTool) InvokableRun(ctx context.Context, arguments string, op
 		Priority     string      `json:"priority"`
 		ExecutorName string      `json:"executor_name"`
 		Deadline     string      `json:"deadline"`
+		ParentKey    string      `json:"parent_key"`
 	}
 	if err := json.Unmarshal([]byte(arguments), &params); err != nil {
 		return "", err
@@ -81,6 +82,7 @@ func (t *issueCreateTool) InvokableRun(ctx context.Context, arguments string, op
 		Priority:     params.Priority,
 		ExecutorName: params.ExecutorName,
 		Deadline:     params.Deadline,
+		ParentKey:    params.ParentKey,
 	})
 	if err != nil {
 		return fmt.Sprintf("错误：创建 Issue 失败 - %s", err.Error()), nil

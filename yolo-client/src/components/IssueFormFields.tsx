@@ -1,4 +1,4 @@
-import { Form, Input, Select } from 'antd'
+import { Form, Input, Select, Tag } from 'antd'
 import { STATUSES, STATUS_NAMES } from '../constants'
 
 export interface IssueFormValues {
@@ -15,13 +15,15 @@ interface IssueFormFieldsProps {
   values: IssueFormValues
   executors: { id: number; name: string }[]
   onChange: (patch: Partial<IssueFormValues>) => void
+  issueKey?: string
 }
 
-export default function IssueFormFields({ values, executors, onChange }: IssueFormFieldsProps) {
+export default function IssueFormFields({ values, executors, onChange, issueKey }: IssueFormFieldsProps) {
   return (
     <>
-      {/* Row 1: status + priority */}
+      {/* Row 1: key + status + priority */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16 }}>
+        {issueKey && <Tag color="default" style={{ fontSize: 13, padding: '2px 10px', margin: 0 }}>{issueKey}</Tag>}
         <Select size="small" value={values.status} onChange={(v) => onChange({ status: v })} style={{ width: 110 }}
           options={STATUSES.map(s => ({ label: STATUS_NAMES[s], value: s }))} />
         <Select size="small" value={values.priority} onChange={(v) => onChange({ priority: v })} style={{ width: 100 }}

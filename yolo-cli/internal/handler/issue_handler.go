@@ -38,6 +38,7 @@ type CreateIssueReq struct {
 	Priority     string `json:"priority"`
 	ExecutorName string `json:"executor_name"`
 	Deadline     string `json:"deadline"`
+	ParentKey    string `json:"parent_key"`
 }
 
 type GetIssueReq struct {
@@ -151,6 +152,17 @@ func (h *IssueHandler) Create(ctx context.Context, req CreateIssueReq) (*model.I
 		}
 	}
 
+	// Resolve parent issue if specified
+	if req.ParentKey != "" {
+		parent, err := h.repo.GetByKey(req.ParentKey)
+		if err != nil {
+			return nil, common.NewAppError(40401, "parent issue not found")
+		}
+		issue.ParentID = &parent.ID
+		// Child inherits project from parent
+		issue.ProjectID = parent.ProjectID
+	}
+
 	if err := issue.Validate(); err != nil {
 		return nil, common.NewAppError(40001, err.Error())
 	}
@@ -212,6 +224,23 @@ func (h *IssueHandler) Update(ctx context.Context, req UpdateIssueReq) (*model.I
 		issue.ExecutorID = &exec.ID
 	}
 
+	if req.ParentKey != nil {
+		if *req.ParentKey == "" {
+			// Clear parent
+			issue.ParentID = nil
+		} else {
+			parent, err := h.repo.GetByKey(*req.ParentKey)
+			if err != nil {
+				return nil, common.NewAppError(40401, "parent issue not found")
+			}
+			// Prevent circular reference
+			if parent.ID == issue.ID {
+				return nil, common.NewAppError(40001, "cannot set self as parent")
+			}
+			issue.ParentID = &parent.ID
+		}
+	}
+
 	if err := issue.Validate(); err != nil {
 		return nil, common.NewAppError(40001, err.Error())
 	}
@@ -225,6 +254,16 @@ func (h *IssueHandler) Update(ctx context.Context, req UpdateIssueReq) (*model.I
 		for _, t := range tasks {
 			if t.Status != model.TaskStatusDone {
 				return nil, common.NewAppError(40001, "all tasks must be completed before closing the issue")
+			}
+		}
+		// Check child issues too
+		children, err := h.repo.ListByParent(issue.ID)
+		if err != nil {
+			return nil, common.NewAppError(50001, err.Error())
+		}
+		for _, c := range children {
+			if c.Status != model.StatusDone {
+				return nil, common.NewAppError(40001, "all child issues must be completed before closing the parent issue")
 			}
 		}
 	}

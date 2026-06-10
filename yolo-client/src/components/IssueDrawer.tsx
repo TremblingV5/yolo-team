@@ -1,6 +1,6 @@
 import { PlusOutlined } from '@ant-design/icons'
-import { Button, Form, Input, message, Modal, Space, Tag } from 'antd'
-import { useState } from 'react'
+import { Button, Form, Input, message, Modal, Select, Space, Tag } from 'antd'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   YoloTeamYoloCliInternalModelDocument as Document,
@@ -8,7 +8,7 @@ import {
   YoloTeamYoloCliInternalModelIssue as Issue,
   useDeleteIssue, useUpdateIssue,
   useLinkDocument, useUnlinkDocument,
-  useListTasks,
+  useListIssues, useListTasks,
 } from '../generated'
 import IssueFormFields, { IssueFormValues } from './IssueFormFields'
 import IssueTaskSection from './IssueTaskSection'
@@ -21,9 +21,11 @@ interface IssueDrawerProps {
   open: boolean
   onClose: () => void
   onSaved: () => void
+  onChildClick?: (key: string) => void
+  onLinkChild?: (childKey: string, parentKey: string) => Promise<boolean>
 }
 
-export default function IssueDrawer({ issue, executors, projectDocs, projectKey, onClose, onSaved }: IssueDrawerProps) {
+export default function IssueDrawer({ issue, executors, projectDocs, projectKey, onClose, onSaved, onChildClick, onLinkChild }: IssueDrawerProps) {
   const navigate = useNavigate()
   const [form, setForm] = useState<IssueFormValues>({
     title: issue.title || '',
@@ -36,6 +38,8 @@ export default function IssueDrawer({ issue, executors, projectDocs, projectKey,
   })
   const [docModal, setDocModal] = useState(false)
   const [newDocTitle, setNewDocTitle] = useState('')
+  const [childModal, setChildModal] = useState(false)
+  const [childKey, setChildKey] = useState('')
 
   const { mutate: updateMutate } = useUpdateIssue({ key: issue.key || '' })
   const { mutate: deleteMutate } = useDeleteIssue({})
@@ -45,6 +49,15 @@ export default function IssueDrawer({ issue, executors, projectDocs, projectKey,
   const tasks = (tasksData as any)?.data || []
 
   const linkedDocs = (issue as any).documents || []
+  const children = (issue as any).children || []
+  const parent = (issue as any).parent || null
+
+  const { data: allIssuesData, refetch: refetchIssues } = useListIssues({ lazy: true })
+  const allIssues = (allIssuesData as any)?.data || []
+
+  const childSelectOptions = allIssues
+    .filter((i: any) => i.key !== issue.key && !children.find((c: any) => c.key === i.key))
+    .map((i: any) => ({ label: `${i.key} — ${i.title}`, value: i.key }))
 
   const showError = (e: any) => message.error(e?.data?.message || e.message || '操作失败')
 
@@ -85,6 +98,20 @@ export default function IssueDrawer({ issue, executors, projectDocs, projectKey,
     } catch (e: any) { showError(e) }
   }
 
+  const handleLinkChild = async () => {
+    if (!childKey.trim()) { message.warning('请选择子 Issue'); return }
+    if (!onLinkChild) { message.error('关联功能不可用'); return }
+    try {
+      const ok = await onLinkChild(childKey, issue.key || '')
+      if (ok) {
+        message.success('已关联子 Issue')
+        setChildModal(false)
+        setChildKey('')
+        onSaved()
+      }
+    } catch (e: any) { showError(e) }
+  }
+
   const handleCreateAndEdit = () => {
     const docTitle = newDocTitle || '未命名文档'
     setDocModal(false)
@@ -101,18 +128,60 @@ export default function IssueDrawer({ issue, executors, projectDocs, projectKey,
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ flex: 1, overflow: 'auto', paddingBottom: 70 }}>
         <Form layout="vertical" size="middle">
-          {/* Key badge + form fields */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16 }}>
-            <Tag color="default" style={{ fontSize: 13, padding: '2px 10px', margin: 0 }}>
-              {issue.key}
-            </Tag>
-          </div>
+          {/* Parent badge */}
+          {parent && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+              <Tag color="blue" style={{ fontSize: 12, cursor: 'pointer', margin: 0 }} onClick={() => onChildClick?.(parent.key)}>
+                父级: {parent.key}
+              </Tag>
+              <span style={{ fontSize: 12, color: '#999' }}>{parent.title}</span>
+            </div>
+          )}
 
           <IssueFormFields
             values={form}
             executors={executors}
             onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+            issueKey={issue.key}
           />
+
+          {/* Children list */}
+          <Form.Item label="子 Issue">
+            <div style={{ marginBottom: 6 }}>
+              <Button size="small" icon={<PlusOutlined />} onClick={() => setChildModal(true)}>关联子 Issue</Button>
+            </div>
+            {children.length === 0 ? (
+              <span style={{ color: '#bbb', fontSize: 13 }}>暂无</span>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {children.map((c: any) => (
+                  <div key={c.key} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '6px 10px', borderRadius: 6, cursor: 'pointer',
+                    background: c.status === 'done' ? '#f6ffed' : '#fafafa',
+                    border: '1px solid', borderColor: c.status === 'done' ? '#b7eb8f' : '#f0f0f0',
+                  }}
+                    onClick={() => onChildClick?.(c.key)}>
+                    <Tag color={c.status === 'done' ? 'success' : c.status === 'in_progress' ? 'processing' : 'default'}>
+                      {c.key}
+                    </Tag>
+                    <span style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                      {c.title}
+                    </span>
+                    <span style={{ fontSize: 12, color: '#999', flexShrink: 0 }}>{c.status === 'done' ? '✅ 已完成' : c.status === 'in_progress' ? '▶ 执行中' : '📋 已创建'}</span>
+                    <Button size="small" type="link" danger onClick={async (e) => {
+                      e.stopPropagation()
+                      if (!onLinkChild) return
+                      try {
+                        const ok = await onLinkChild(c.key, '')
+                        if (ok) { message.success('已取消关联'); onSaved() }
+                      } catch (err: any) { showError(err) }
+                    }}>取消关联</Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Form.Item>
 
           {/* Task section */}
           <IssueTaskSection
@@ -177,6 +246,27 @@ export default function IssueDrawer({ issue, executors, projectDocs, projectKey,
             <div style={{ color: '#bbb', textAlign: 'center', padding: 24 }}>所有文档已关联</div>
           )}
         </div>
+      </Modal>
+
+      {/* Link child issue modal */}
+      <Modal title="关联子 Issue" open={childModal} onCancel={() => { setChildModal(false); setChildKey('') }}
+        onOk={handleLinkChild} okText="关联" width={420}
+        afterOpenChange={(open) => { if (open) refetchIssues() }}>
+        <Form layout="vertical">
+          <Form.Item label="选择子 Issue" required>
+            <Select
+              showSearch
+              value={childKey || undefined}
+              onChange={(v) => setChildKey(v)}
+              placeholder="搜索并选择 Issue..."
+              filterOption={(input, option) =>
+                (option?.label as string || '').toLowerCase().includes(input.toLowerCase())
+              }
+              options={childSelectOptions}
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   )

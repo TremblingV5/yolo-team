@@ -8,6 +8,7 @@ import (
 type Issue struct {
 	ID          int64      `gorm:"primaryKey;autoIncrement" json:"id"`
 	Key         string     `gorm:"column:key;type:varchar(64);uniqueIndex;not null" json:"key"`
+	ParentID    *int64     `gorm:"column:parent_id;default:null;index" json:"parent_id"`
 	ProjectID   int64      `gorm:"column:project_id;not null;index" json:"project_id"`
 	Status      string     `gorm:"column:status;type:varchar(16);not null;default:created" json:"status"`
 	Title       string     `gorm:"column:title;type:varchar(200);not null" json:"title"`
@@ -25,6 +26,8 @@ type Issue struct {
 	Project   *Project   `gorm:"foreignKey:ProjectID" json:"-"`
 	Executor  *Executor  `gorm:"foreignKey:ExecutorID" json:"executor,omitempty"`
 	Documents []Document `gorm:"many2many:issue_documents;" json:"documents,omitempty"`
+	Children  []Issue    `gorm:"foreignKey:ParentID" json:"children"`
+	Parent    *Issue     `gorm:"foreignKey:ParentID" json:"-"`
 }
 
 func (Issue) TableName() string { return "issues" }
@@ -116,4 +119,5 @@ type UpdateIssueRequest struct {
 	RepoURL      *string    `json:"repo_url"`
 	RepoName     *string    `json:"repo_name"`
 	BranchName   *string    `json:"branch_name"`
+	ParentKey    *string    `json:"parent_key"`
 }
