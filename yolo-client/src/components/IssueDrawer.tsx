@@ -1,14 +1,16 @@
 import { PlusOutlined } from '@ant-design/icons'
-import { Button, Form, Input, message, Modal, Select, Space, Tag } from 'antd'
-import { useEffect, useState } from 'react'
+import { Button, Form, Input, message, Modal, Select, Tag } from 'antd'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useGet } from 'restful-react'
+import MDEditor from '@uiw/react-md-editor'
 import {
   YoloTeamYoloCliInternalModelDocument as Document,
   YoloTeamYoloCliInternalModelExecutor as Executor,
   YoloTeamYoloCliInternalModelIssue as Issue,
   useDeleteIssue, useUpdateIssue,
   useLinkDocument, useUnlinkDocument,
-  useListIssues, useListTasks,
+  useListIssues, useListTasks, useUpdateDocument,
 } from '../generated'
 import IssueFormFields, { IssueFormValues } from './IssueFormFields'
 import IssueTaskSection from './IssueTaskSection'
@@ -112,6 +114,35 @@ export default function IssueDrawer({ issue, executors, projectDocs, projectKey,
     } catch (e: any) { showError(e) }
   }
 
+  const { refetch: fetchDoc } = useGet<any, any, void, { key: string }>(
+    (params) => `/api/v1/documents/${params.key}`,
+    { lazy: true },
+  )
+  const [editDocModal, setEditDocModal] = useState(false)
+  const [editingDoc, setEditingDoc] = useState<{ key: string; title: string; content: string }>({ key: '', title: '', content: '' })
+  const { mutate: updateDocMutate } = useUpdateDocument({ key: '' })
+
+  const openDocEditor = async (d: any) => {
+    setEditingDoc({ key: d.key, title: d.title, content: '' })
+    setEditDocModal(true)
+    try {
+      const result = await fetchDoc({ key: d.key })
+      const content = (result as any)?.data?.content || ''
+      setEditingDoc(prev => ({ ...prev, content }))
+    } catch (e: any) {
+      setEditingDoc(prev => ({ ...prev, content: '' }))
+    }
+  }
+
+  const handleSaveDoc = async () => {
+    if (!editingDoc.key) return
+    try {
+      await updateDocMutate({ content: editingDoc.content } as any, { pathParams: { key: editingDoc.key } })
+      message.success('文档已保存')
+      onSaved()
+    } catch (e: any) { showError(e) }
+  }
+
   const handleCreateAndEdit = () => {
     const docTitle = newDocTitle || '未命名文档'
     setDocModal(false)
@@ -198,13 +229,26 @@ export default function IssueDrawer({ issue, executors, projectDocs, projectKey,
             {linkedDocs.length === 0 ? (
               <span style={{ color: '#bbb', fontSize: 13 }}>暂无</span>
             ) : (
-              <Space wrap>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {linkedDocs.map((d: any) => (
-                  <Tag key={d.id} closable onClose={() => handleUnlinkDoc(d.id)} color="processing">
-                    {d.title}
-                  </Tag>
+                  <div key={d.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '6px 10px', borderRadius: 6, cursor: 'pointer',
+                    background: '#fafafa', border: '1px solid #f0f0f0',
+                  }}
+                    onClick={() => openDocEditor(d)}>
+                    <Tag color="processing">{d.key || `#${d.id}`}</Tag>
+                    <span style={{ flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                      {d.title}
+                    </span>
+                    {d.creator && <span style={{ fontSize: 12, color: '#999', flexShrink: 0 }}>by {d.creator}</span>}
+                    <Button size="small" type="link" danger onClick={async (e) => {
+                      e.stopPropagation()
+                      try { await handleUnlinkDoc(d.id) } catch (err: any) { showError(err) }
+                    }}>取消关联</Button>
+                  </div>
                 ))}
-              </Space>
+              </div>
             )}
           </Form.Item>
         </Form>
@@ -267,6 +311,29 @@ export default function IssueDrawer({ issue, executors, projectDocs, projectKey,
             />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Document edit modal */}
+      <Modal
+        title={editingDoc.title || '文档编辑'}
+        open={editDocModal}
+        onCancel={() => setEditDocModal(false)}
+        width={800}
+        style={{ top: 40 }}
+        footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button onClick={() => setEditDocModal(false)}>取消</Button>
+            <Button type="primary" onClick={handleSaveDoc}>保存</Button>
+          </div>
+        }
+      >
+        <div data-color-mode="light" style={{ minHeight: 400 }}>
+          <MDEditor
+            value={editingDoc.content}
+            onChange={v => setEditingDoc(prev => ({ ...prev, content: v || '' }))}
+            height={400}
+          />
+        </div>
       </Modal>
     </div>
   )
